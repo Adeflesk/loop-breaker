@@ -1,0 +1,62 @@
+🌀 LoopBreaker
+LoopBreaker is a behavioral engineering platform designed to identify, track, and disrupt self-reinforcing psychological feedback loops. Specifically, it targets the cycle of stress, procrastination, and distorted beliefs using a "Circuit Breaker" software pattern.
+
+Built natively for Apple Silicon (M3).
+
+🎯 Project Aims
+Mapping: Translate subjective emotional states into a Directed Cyclic Graph (DCG).
+
+Detection: Use biometrics (Heart Rate) and digital breadcrumbs (Screen Time) to identify the current "Node" in the cycle.
+
+Intervention: Trigger "Circuit Breakers"—forced UI/UX shifts that require the user to perform a grounding task before continuing.
+
+🛠 The Stack
+Frontend: Flutter (Mobile/Desktop) - Handles UI and biometric ingestion.
+
+Backend: Python + FastAPI - The orchestration layer.
+
+Intelligence: Ollama (Llama 3.2) - Local AI for sentiment analysis and state classification.
+
+Database: Neo4j (Graph) - Stores the relationships between emotional states.
+
+🏗 Project Structure
+Plaintext
+loop-breaker/
+├── frontend/          # Flutter application logic
+├── backend/           # FastAPI, logic engine, and agent orchestration
+├── ai/                # Ollama Modelfiles and prompt engineering
+├── database/          # Neo4j cypher scripts and schemas
+└── docs/              # Research, diagrams, and logic maps
+🧠 The Behavioral Logic (For AI Agents)
+The system operates on a 8-Node Feedback Loop. AI agents should refer to this cycle when generating state transition logic:
+
+Stress → Triggered by physiological spikes.
+
+Inability to cope with emotions → Decreased executive function.
+
+Unhelpful coping (Procrastination) → High digital usage/avoidance.
+
+Inability to prioritize needs → Neglecting physical health (sleep/water).
+
+Hypervigilance/Anxiety → Heightened sensitivity to stimuli.
+
+Distorted negative beliefs → Negative self-talk identified via NLP.
+
+Low self-esteem → Long-term state degradation.
+
+Shame → The final gate before the loop restarts at "Stress."
+
+The "Circuit Breaker" Pattern
+When the backend identifies a high probability of moving from Node 3 (Procrastination) to Node 4 (Neglecting Needs), the InterventionService must trigger a "hard interrupt" in the frontend.
+
+🚀 Setup for M3
+Local AI: ollama serve must be running.
+
+Environment: Use venv in /backend for Python dependencies.
+
+Flutter: Use flutter doctor to ensure the ARM64 toolchain is healthy.
+
+🛡 Privacy & Ethics
+Zero-Cloud AI: All sentiment analysis stays on-device via Ollama.
+
+Encryption: Personal health data must be encrypted at rest using AES-256.

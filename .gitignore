@@ -1,0 +1,54 @@
+# --- macOS / System ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+.pytest_cache/
+.python-version
+
+
+# --- Flutter / Frontend ---
+/frontend/build/
+/frontend/.dart_tool/
+/frontend/.flutter-plugins
+/frontend/.flutter-plugins-dependencies
+/frontend/.packages
+/frontend/.pub-cache/
+/frontend/.pub/
+/frontend/ios/Flutter/Generated.xcconfig
+/frontend/ios/Flutter/flutter_export_environment.sh
+/frontend/macos/Flutter/ephemeral/
+
+
+# --- Neo4j / Database ---
+# If you ever run a local dump or keep auth files in the folder
+*.db
+*.sqlite
+neo4j/data/
+neo4j/logs/
+neo4j/import/
+auth.ini
+
+
+# --- AI / Ollama ---
+# Ollama models are massive and stored in ~/.ollama by default, 
+# but if you move them into the project, ignore them!
+models/
+*.bin
+*.gguf
+
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.iml
