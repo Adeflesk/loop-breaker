@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+requests
+neo4j
+pydantic
