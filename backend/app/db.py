@@ -1,21 +1,44 @@
 import logging
 import os
+import time
 from typing import Tuple, List, Dict, Optional, Any
 from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 
 from .interventions import INTERVENTIONS
 
 logger = logging.getLogger(__name__)
 
 class BehavioralStateManager:
-    def __init__(self, uri: str, user: str, password: str) -> None:
+    def __init__(self, uri: str, user: str, password: str, max_retries: int = 5) -> None:
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.is_available = True
-        try:
-            self._bootstrap_nodes()
-        except Exception:
-            self.is_available = False
-            logger.error("DB bootstrap unavailable", exc_info=True)
+        
+        # Retry logic for Neo4j connection
+        for attempt in range(1, max_retries + 1):
+            try:
+                self._bootstrap_nodes()
+                logger.info(f"Neo4j connection established on attempt {attempt}")
+                break
+            except ServiceUnavailable as e:
+                if attempt < max_retries:
+                    wait_time = min(2 ** attempt, 30)  # Exponential backoff, max 30s
+                    logger.warning(
+                        f"Neo4j unavailable (attempt {attempt}/{max_retries}). "
+                        f"Retrying in {wait_time}s... Error: {e}"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    self.is_available = False
+                    logger.error(
+                        f"Neo4j connection failed after {max_retries} attempts. "
+                        "App will continue with degraded functionality.",
+                        exc_info=True
+                    )
+            except Exception as e:
+                self.is_available = False
+                logger.error(f"Unexpected error during DB bootstrap: {e}", exc_info=True)
+                break
 
     def close(self) -> None:
         self.driver.close()
