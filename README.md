@@ -15,18 +15,56 @@ Frontend: Flutter (Mobile/Desktop) - Handles UI and biometric ingestion.
 
 Backend: Python + FastAPI - The orchestration layer.
 
-Intelligence: Ollama (Llama 3.2) - Local AI for sentiment analysis and state classification.
+Intelligence: Ollama (llama3.2:1b) - Local AI for sentiment analysis and state classification.
 
 Database: Neo4j (Graph) - Stores the relationships between emotional states.
 
 🏗 Project Structure
 Plaintext
+```
 loop-breaker/
-├── frontend/          # Flutter application logic
-├── backend/           # FastAPI, logic engine, and agent orchestration
-├── ai/                # Ollama Modelfiles and prompt engineering
-├── database/          # Neo4j cypher scripts and schemas
-└── docs/              # Research, diagrams, and logic maps
+├── .github/workflows/ci.yml   # CI for backend + frontend tests
+├── ai/                        # Ollama Modelfiles and prompt engineering
+├── backend/                   # FastAPI, logic engine, and agent orchestration
+│   ├── app/                   # API, AI, DB, models
+│   └── tests/                 # Pytest suite
+├── database/                  # Neo4j cypher scripts and schemas
+├── docs/                      # Research, diagrams, and logic maps
+├── frontend/                  # Flutter application logic
+│   ├── lib/                   # UI + services
+│   └── test/                  # Flutter tests
+├── launch_all.sh              # Local launcher (full stack)
+├── run_app.sh                 # Local app launcher
+└── README.md
+```
+
+📚 Docs
+- [docs/overview.md](docs/overview.md)
+- [docs/backend.md](docs/backend.md)
+- [docs/frontend.md](docs/frontend.md)
+- [docs/api.md](docs/api.md)
+- [docs/data-model.md](docs/data-model.md)
+- [docs/runbook.md](docs/runbook.md)
+- [docs/best-practices-review.md](docs/best-practices-review.md)
+- [docs/rewire-implementation-plan.md](docs/rewire-implementation-plan.md)
+- [docs/rewire-specs.md](docs/rewire-specs.md)
+- [docs/rewire-backlog.md](docs/rewire-backlog.md)
+- [docs/testing-spec.md](docs/testing-spec.md)
+
+✅ CI
+GitHub Actions runs backend pytest and frontend Flutter tests on every push and pull request.
+
+🧪 Tests
+Backend:
+```
+python -m pytest backend/tests
+```
+
+Frontend:
+```
+cd frontend
+flutter test
+```
 🧠 The Behavioral Logic (For AI Agents)
 The system operates on a 8-Node Feedback Loop. AI agents should refer to this cycle when generating state transition logic:
 

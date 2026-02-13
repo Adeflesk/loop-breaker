@@ -7,6 +7,29 @@ NC='\033[0m' # No Color
 
 echo "${BLUE}🌀 Starting LoopBreaker Stack on M3...${NC}"
 
+# Backend port to reserve before launch
+BACKEND_PORT="${BACKEND_PORT:-8000}"
+
+free_port() {
+	local port="$1"
+	local pids
+	pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+
+	if [ -n "$pids" ]; then
+		echo "${BLUE}➔ Releasing port $port (PID: $pids)...${NC}"
+		kill $pids 2>/dev/null || true
+		sleep 1
+
+		pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+		if [ -n "$pids" ]; then
+			echo "${BLUE}➔ Force-stopping remaining process(es) on port $port...${NC}"
+			kill -9 $pids 2>/dev/null || true
+		fi
+	fi
+}
+
+free_port "$BACKEND_PORT"
+
 # --- 2. Start Backend (FastAPI) in the background ---
 echo "${GREEN}➔ Launching Backend (FastAPI)...${NC}"
 cd backend

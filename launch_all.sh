@@ -7,6 +7,29 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Launching LoopBreaker AI Stack...${NC}"
 
+# Backend port to reserve before launch
+BACKEND_PORT="${BACKEND_PORT:-8000}"
+
+free_port() {
+    local port="$1"
+    local pids
+    pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+
+    if [ -n "$pids" ]; then
+        echo -e "${BLUE}➔ Releasing port $port (PID: $pids)...${NC}"
+        kill $pids 2>/dev/null || true
+        sleep 1
+
+        pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            echo -e "${BLUE}➔ Force-stopping remaining process(es) on port $port...${NC}"
+            kill -9 $pids 2>/dev/null || true
+        fi
+    fi
+}
+
+free_port "$BACKEND_PORT"
+
 # 1. Start Ollama (Check if running, if not start it)
 if ! pgrep -x "ollama" > /dev/null; then
     echo -e "${GREEN}➔ Starting Ollama AI...${NC}"
