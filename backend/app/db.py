@@ -65,6 +65,11 @@ class BehavioralStateManager:
         task: str = "",
         sublabel: Optional[str] = None,
     ) -> Tuple[str, bool]:
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning default risk assessment")
+            # Return Low risk, no loop for degraded mode
+            return "Low", False
+            
         try:
             with self.driver.session() as session:
                 # 1. Record Entry
@@ -106,6 +111,10 @@ class BehavioralStateManager:
         was_successful: bool,
         needs_check: Optional[Dict[str, bool]] = None,
     ) -> None:
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, skipping intervention resolution")
+            return
+            
         needs = needs_check or {}
         try:
             with self.driver.session() as session:
@@ -136,6 +145,10 @@ class BehavioralStateManager:
 
     def get_history(self) -> List[Dict[str, Any]]:
         """Fetches the last 20 entries for the Dashboard."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning empty history")
+            return []
+            
         try:
             with self.driver.session() as session:
                 result = session.run("""
@@ -164,6 +177,10 @@ class BehavioralStateManager:
 
     def get_ai_insight(self) -> Optional[Dict[str, Any]]:
         """Calculates patterns and resilience scores."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning empty insight")
+            return None
+            
         try:
             with self.driver.session() as session:
                 result = session.run("""
@@ -229,6 +246,10 @@ class BehavioralStateManager:
 
     def get_trend_stats(self) -> Dict[str, int]:
         """Returns count of entries per emotional state."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning empty trend stats")
+            return {}
+            
         try:
             with self.driver.session() as session:
                 result = session.run("""
@@ -243,6 +264,10 @@ class BehavioralStateManager:
 
     def reset_all_data(self) -> bool:
         """Wipes user data while keeping Node labels."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, cannot reset data")
+            return False
+            
         try:
             with self.driver.session() as session:
                 session.run("MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome DETACH DELETE n")
