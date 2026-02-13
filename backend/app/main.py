@@ -11,6 +11,16 @@ from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
 from .models import AnalysisRequest, AnalysisResponse, FeedbackRequest, InsightResponse
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console (stdout)
+        logging.FileHandler('backend.log')  # File: backend.log in current directory
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 
