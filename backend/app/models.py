@@ -21,6 +21,7 @@ class AnalysisResponse(BaseModel):
     intervention_title: str
     intervention_task: str
     education_info: Optional[str] = None
+    intervention_type: Optional[str] = None
 
 class InsightResponse(BaseModel):
     """For the Dashboard summary card."""

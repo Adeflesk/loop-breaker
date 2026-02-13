@@ -47,9 +47,9 @@ class BehavioralStateManager:
                 # 1. Record Entry
                 session.run("""
                     MATCH (n:Node {name: $name})
-                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf})
+                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf, emotion_sublabel: $sublabel})
                     CREATE (e)-[:RECORDS_STATE]->(n)
-                """, name=node_name, conf=confidence)
+                """, name=node_name, conf=confidence, sublabel=sublabel)
 
                 # 2. Check for Loop
                 result = session.run("""

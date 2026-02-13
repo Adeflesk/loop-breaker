@@ -272,6 +272,8 @@ class _JournalScreenState extends State<JournalScreen> {
                   final double? successRate =
                       snapshot.data?['success_rate']?.toDouble();
                   final String? topLoop = snapshot.data?['top_loop'];
+                  final String? trend = snapshot.data?['trend'];
+                  final int? streak = snapshot.data?['streak'];
 
                   return Card(
                     elevation: 0,
@@ -328,6 +330,51 @@ class _JournalScreenState extends State<JournalScreen> {
                               ),
                             ],
                           ),
+                          if (trend != null && trend != 'unknown') ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  trend == 'improving'
+                                      ? Icons.trending_up
+                                      : trend == 'declining'
+                                          ? Icons.trending_down
+                                          : Icons.trending_flat,
+                                  color: trend == 'improving'
+                                      ? Colors.green
+                                      : trend == 'declining'
+                                          ? Colors.orange
+                                          : Colors.grey,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Recovery Trend: ${trend[0].toUpperCase()}${trend.substring(1)}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (streak != null && streak > 0) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.local_fire_department,
+                                    color: Colors.orange, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Streak: $streak day${streak > 1 ? "s" : ""}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           if (successRate != null) ...[
                             const SizedBox(height: 12),
                             LinearProgressIndicator(
