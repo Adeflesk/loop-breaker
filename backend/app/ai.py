@@ -14,39 +14,53 @@ DEFAULT_NODE = "Stress"
 DEFAULT_SUBLABEL = "General"
 
 SYSTEM_PROMPT = """
-You are a psychiatric clinical encoder for the LoopBreaker app.
-TASK: Analyze the user's journal entry. Map it to a Primary Node and a Granular Sub-label.
+Classify this journal entry into ONE emotional state.
 
-EMOTION WHEEL SCHEMA:
-- Stress: [Overwhelmed, Anxious, Burnt-out]
-- Procrastination: [Avoidance, Perfectionism, Fear of Failure]
-- Anxiety: [Worry, Panic, Dread]
-- Shame: [Guilt, Embarrassment, Self-blame]
-- Overwhelm: [Paralysis, Cognitive Overload, Scattered]
-- Numbness: [Disconnected, Apathy, Exhaustion]
-- Isolation: [Loneliness, Withdrawal, Avoidance of Others]
+VALID STATES (choose exactly one):
+Procrastination, Anxiety, Stress, Shame, Overwhelm, Numbness, Isolation
 
-OUTPUT RULES:
-1. Return ONLY valid JSON.
-2. If confidence is low, set sublabel to "General".
-3. Keep 'reasoning' under 15 words.
+SUBLABELS BY STATE:
+- Procrastination: Avoidance, Perfectionism, Fear of Failure
+- Anxiety: Worry, Panic, Dread
+- Stress: Overwhelmed, Anxious, Burnt-out
+- Shame: Guilt, Embarrassment, Self-blame
+- Overwhelm: Paralysis, Cognitive Overload, Scattered
+- Numbness: Disconnected, Apathy, Exhaustion
+- Isolation: Loneliness, Withdrawal, Avoidance of Others
+
+Return ONLY this JSON format:
+{"node": "StateName", "sublabel": "SubLabel", "confidence": 0.8, "reasoning": "brief explanation"}
 
 EXAMPLES:
-Input: "I have so much to do, I can't even start."
-Output: {"node": "Procrastination", "sublabel": "Avoidance", "confidence": 0.9, "reasoning": "Task paralysis leading to entry delay."}
-
-Input: "I keep thinking something bad is going to happen."
-Output: {"node": "Anxiety", "sublabel": "Dread", "confidence": 0.85, "reasoning": "Persistent anticipatory worry without specific trigger."}
+"I can't start my work" → {"node": "Procrastination", "sublabel": "Avoidance", "confidence": 0.9, "reasoning": "avoiding task initiation"}
+"Everything feels threatening" → {"node": "Anxiety", "sublabel": "Dread", "confidence": 0.85, "reasoning": "pervasive anticipatory fear"}
+"I'm behind on deadlines" → {"node": "Stress", "sublabel": "Overwhelmed", "confidence": 0.9, "reasoning": "time pressure and workload"}
+"I feel terrible about myself" → {"node": "Shame", "sublabel": "Self-blame", "confidence": 0.85, "reasoning": "self-directed criticism"}
+"Too many things at once" → {"node": "Overwhelm", "sublabel": "Cognitive Overload", "confidence": 0.9, "reasoning": "mental capacity exceeded"}
+"I don't feel anything" → {"node": "Numbness", "sublabel": "Disconnected", "confidence": 0.85, "reasoning": "emotional blunting present"}
+"I don't want to see anyone" → {"node": "Isolation", "sublabel": "Withdrawal", "confidence": 0.9, "reasoning": "social avoidance pattern"}
 """
 
 
 def clean_ai_response(raw_json: str) -> Dict[str, Any]:
-    data = json.loads(raw_json)
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as e:
+        logger.warning(f"AI returned invalid JSON: {raw_json[:200]} | Error: {e}")
+        return {
+            "detected_node": DEFAULT_NODE,
+            "emotion_sublabel": DEFAULT_SUBLABEL,
+            "confidence": 0.5,
+            "reasoning": "JSON parse error",
+        }
 
     node = data.get("node", DEFAULT_NODE)
     sublabel = data.get("sublabel", DEFAULT_SUBLABEL)
     reasoning = data.get("reasoning", "Pattern identified from text.")
     confidence = data.get("confidence", 0.5)
+
+    # Log what AI actually returned before validation
+    logger.info(f"AI raw response: node={node}, sublabel={sublabel}, confidence={confidence}")
 
     try:
         confidence_value = float(confidence)
@@ -56,6 +70,7 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     confidence_value = max(0.0, min(1.0, confidence_value))
 
     if node not in VALID_NODES:
+        logger.warning(f"AI returned invalid node '{node}'. Valid nodes: {VALID_NODES}. Defaulting to {DEFAULT_NODE}")
         node = DEFAULT_NODE
         sublabel = DEFAULT_SUBLABEL
 
@@ -71,13 +86,15 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
 
 async def query_local_ai(text: str) -> Dict[str, Any]:
     prompt = (
-        f"{SYSTEM_PROMPT}\n"
-        f"Input: {json.dumps(text)}\n"
-        "Output:"
+        f"{SYSTEM_PROMPT}\n\n"
+        f"Journal entry: \"{text}\"\n\n"
+        "JSON response:"
     )
 
     model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+
+    logger.info(f"Querying Ollama with model={model}, text_length={len(text)}")
 
     try:
         async with httpx.AsyncClient() as client:
@@ -103,7 +120,10 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
                 "reasoning": "AI is warming up or busy. Please try again.",
             }
 
-        return clean_ai_response(raw_data["response"])
+        ai_response = raw_data["response"]
+        logger.info(f"Ollama raw response: {ai_response[:300]}")  # Log first 300 chars
+        
+        return clean_ai_response(ai_response)
 
     except Exception:
         logger.error("AI client error", exc_info=True)
