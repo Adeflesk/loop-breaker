@@ -55,8 +55,24 @@ cd ..
 # 4. Start Flutter Frontend
 echo -e "${GREEN}➔ Launching Flutter Web...${NC}"
 cd frontend
-flutter run -d chrome &
+flutter run -d chrome --web-port=5173 > /tmp/flutter.log 2>&1 &
 FLUTTER_PID=$!
+
+# Wait for Flutter to start and get the app URL
+echo -e "${BLUE}➔ Waiting for Flutter web server...${NC}"
+sleep 5
+
+# Extract the localhost URL from Flutter logs and open in Chrome
+FLUTTER_URL=$(grep -oP 'http://[0-9.]+:\d+' /tmp/flutter.log | head -1)
+if [ -z "$FLUTTER_URL" ]; then
+    FLUTTER_URL="http://127.0.0.1:5173"
+fi
+
+echo -e "${GREEN}➔ Opening Flutter app at ${FLUTTER_URL}...${NC}"
+open -a "Google Chrome" "$FLUTTER_URL"
+sleep 2
+
+cd ..
 
 echo -e "${BLUE}✅ All systems online. Press Ctrl+C to stop all services.${NC}"
 

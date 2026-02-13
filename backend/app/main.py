@@ -12,12 +12,13 @@ from .interventions import INTERVENTIONS
 from .models import AnalysisRequest, AnalysisResponse, FeedbackRequest, InsightResponse
 
 # Configure logging
+log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend.log")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
     handlers=[
         logging.StreamHandler(),  # Console (stdout)
-        logging.FileHandler('backend.log')  # File: backend.log in current directory
+        logging.FileHandler(log_file)  # File: backend.log in backend/ directory
     ]
 )
 
@@ -44,8 +45,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    app.state.db.close()
-
+    if hasattr(app.state, "db"):
+        app.state.db.close()
+        logger.info("Database connection closed.")
 
 ALLOWED_ORIGINS = [
     origin.strip()
