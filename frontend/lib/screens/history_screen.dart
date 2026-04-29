@@ -3,11 +3,26 @@ import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  Future<List<dynamic>> fetchHistory() async {
-    return ApiClient.fetchHistory();
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  late Future<List<dynamic>> _historyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _historyFuture = ApiClient.fetchHistory();
+  }
+
+  void _refreshHistory() {
+    setState(() {
+      _historyFuture = ApiClient.fetchHistory();
+    });
   }
 
   @override
@@ -15,7 +30,7 @@ class HistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Journey Dashboard')),
       body: FutureBuilder<List<dynamic>>(
-        future: fetchHistory(),
+        future: _historyFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -129,7 +144,23 @@ class HistoryScreen extends StatelessWidget {
                   itemCount: data.length,
                   itemBuilder: (context, index) {
                     final item = data[index];
-                    final bool isLoop = item['intervention'] != 'None';
+                    final bool isLoop = (item['intervention'] != null && 
+                        item['intervention'] != 'None' && 
+                        item['intervention'].toString().isNotEmpty);
+                    final String state = item['state']?.toString() ?? 'Unknown';
+                    final String intervention = item['intervention']?.toString() ?? '';
+                    
+                    // Safe time formatting: check if time exists and has sufficient length
+                    String timeStr = '';
+                    if (item['time'] != null) {
+                      final timeString = item['time'].toString();
+                      if (timeString.length >= 16) {
+                        timeStr = timeString.substring(11, 16);
+                      } else {
+                        timeStr = timeString;
+                      }
+                    }
+                    
                     return ListTile(
                       leading: Icon(
                         item['was_successful'] == true
@@ -139,15 +170,13 @@ class HistoryScreen extends StatelessWidget {
                             ? Colors.green
                             : Colors.grey,
                       ),
-                      title: Text(item['state'] ?? 'Unknown'),
+                      title: Text(state),
                       subtitle: Text(
                         isLoop
-                            ? 'Intervention: ${item['intervention']}'
+                            ? 'Intervention: $intervention'
                             : 'Healthy State',
                       ),
-                      trailing: Text(
-                        item['time'].toString().substring(11, 16),
-                      ),
+                      trailing: Text(timeStr),
                     );
                   },
                 ),
@@ -200,6 +229,7 @@ class HistoryScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildTrendChart(Map<String, double> data) {
     return Container(
       height: 200,
@@ -239,44 +269,45 @@ class HistoryScreen extends StatelessWidget {
       default:
         return Colors.blueAccent;
     }
-  }}
+  }
 
-Future<void> _resetData(BuildContext context) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Reset All Data?'),
-      content: const Text(
-        'This will permanently delete your history and broken loops. '
-        'This cannot be undone.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+  Future<void> _resetData(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset All Data?'),
+        content: const Text(
+          'This will permanently delete your history and broken loops. '
+          'This cannot be undone.',
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text(
-            'Reset',
-            style: TextStyle(color: Colors.red),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ),
-      ],
-    ),
-  );
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Reset',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
 
-  if (confirm == true) {
-    try {
-      final success = await ApiClient.resetData();
-      if (success) {
-        (context as Element).reassemble();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database Wiped')),
-        );
+    if (confirm == true) {
+      try {
+        final success = await ApiClient.resetData();
+        if (success) {
+          _refreshHistory();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Database Wiped')),
+          );
+        }
+      } catch (e) {
+        debugPrint('Reset error: $e');
       }
-    } catch (e) {
-      debugPrint('Reset error: $e');
     }
   }
 }

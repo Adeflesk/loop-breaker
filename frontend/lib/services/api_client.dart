@@ -7,11 +7,15 @@ import '../config.dart';
 
 class ApiClient {
   static const String _baseUrl = kBackendBaseUrl;
+  static http.Client? clientOverride;
+  static final http.Client _defaultClient = http.Client();
+
+  static http.Client get _httpClient => clientOverride ?? _defaultClient;
 
   static Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
   static Future<Map<String, dynamic>> analyzeEntry(String text) async {
-    final response = await http.post(
+    final response = await _httpClient.post(
       _uri('/analyze'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'user_text': text}),
@@ -33,7 +37,7 @@ class ApiClient {
       payload['needs_check'] = needsCheck;
     }
 
-    await http.post(
+    await _httpClient.post(
       _uri('/feedback'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
@@ -42,7 +46,7 @@ class ApiClient {
 
   static Future<Map<String, dynamic>> fetchInsight() async {
     try {
-      final response = await http.get(_uri('/insight'));
+      final response = await _httpClient.get(_uri('/insight'));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -54,7 +58,7 @@ class ApiClient {
 
   static Future<Map<String, dynamic>> fetchStats() async {
     try {
-      final response = await http.get(_uri('/stats'));
+      final response = await _httpClient.get(_uri('/stats'));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -66,7 +70,7 @@ class ApiClient {
 
   static Future<List<dynamic>> fetchHistory() async {
     try {
-      final response = await http.get(_uri('/history'));
+      final response = await _httpClient.get(_uri('/history'));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
@@ -80,7 +84,7 @@ class ApiClient {
   }
 
   static Future<bool> resetData() async {
-    final response = await http.delete(_uri('/reset'));
+    final response = await _httpClient.delete(_uri('/reset'));
     return response.statusCode == 200;
   }
 }

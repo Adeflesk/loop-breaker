@@ -59,6 +59,12 @@ class _JournalScreenState extends State<JournalScreen> {
     _showStandardInterventionDialog(data);
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _showHALTCheckIn(Map<String, dynamic> data) {
     final List<Map<String, dynamic>> needs = [
       {'icon': Icons.water_drop, 'label': 'Hydration (Water)', 'checked': false},

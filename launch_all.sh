@@ -63,7 +63,7 @@ echo -e "${BLUE}➔ Waiting for Flutter web server...${NC}"
 sleep 5
 
 # Extract the localhost URL from Flutter logs and open in Chrome
-FLUTTER_URL=$(grep -oP 'http://[0-9.]+:\d+' /tmp/flutter.log | head -1)
+FLUTTER_URL=$(grep -Eo 'http://[0-9.]+:[0-9]+' /tmp/flutter.log | head -1)
 if [ -z "$FLUTTER_URL" ]; then
     FLUTTER_URL="http://127.0.0.1:5173"
 fi

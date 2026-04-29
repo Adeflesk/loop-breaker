@@ -82,6 +82,7 @@ class BehavioralStateManager:
                 # 2. Check for Loop
                 result = session.run("""
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
+                    WHERE NOT (e.loop_broken = true)
                     RETURN n.name as name
                     ORDER BY e.timestamp DESC LIMIT 3
                 """)
@@ -106,6 +107,34 @@ class BehavioralStateManager:
             logger.error("DB log_and_analyze error", exc_info=True)
             return "Low", False
 
+    def cleanup_stale_interventions(self, hours_old: int = 1) -> None:
+        """Marks old, unresolved interventions as skipped."""
+        if not self.is_available:
+            return
+
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (i:Intervention)
+                    WHERE NOT (i)-[:HAS_OUTCOME]->()
+                    AND i.timestamp < datetime() - duration({hours: $hours})
+                    CREATE (o:Outcome {
+                        success: false,
+                        skipped: true,
+                        timestamp: datetime(),
+                        notes: "System auto-resolved stale intervention"
+                    })
+                    CREATE (i)-[:HAS_OUTCOME]->(o)
+                    RETURN count(i) as cleaned
+                """, hours=hours_old)
+                record = result.single()
+                count = record["cleaned"] if record else 0
+                if count > 0:
+                    logger.info(f"Cleaned up {count} stale intervention(s) older than {hours_old}h")
+            self.is_available = True
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}", exc_info=True)
+
     def resolve_intervention(
         self,
         was_successful: bool,
@@ -114,6 +143,9 @@ class BehavioralStateManager:
         if not self.is_available:
             logger.warning("Neo4j unavailable, skipping intervention resolution")
             return
+        
+        # Clean up stale interventions before resolving the current one
+        self.cleanup_stale_interventions()
             
         needs = needs_check or {}
         try:
@@ -138,6 +170,17 @@ class BehavioralStateManager:
                 rest=needs.get("rest"),
                 movement=needs.get("movement"),
                 )
+                
+                # If intervention was successful, reset the loop history
+                # to allow fresh start and prevent overaggressively tagging recurring patterns
+                if was_successful:
+                    session.run("""
+                        MATCH (e:Entry)
+                        WHERE NOT (e)-[:HAS_INTERVENTION]->()
+                        WITH e ORDER BY e.timestamp DESC LIMIT 10
+                        SET e.loop_broken = true
+                    """)
+                    logger.info("Loop history marked as reset after successful intervention")
             self.is_available = True
         except Exception:
             self.is_available = False
@@ -189,14 +232,19 @@ class BehavioralStateManager:
                     OPTIONAL MATCH (i)-[:HAS_OUTCOME]->(o:Outcome)
                     WITH n.name AS state, 
                          count(i) AS loop_count, 
-                         sum(CASE WHEN o.success = true THEN 1 ELSE 0 END) AS successes
-                    RETURN state, loop_count, successes
+                         sum(CASE WHEN o.success = true THEN 1 ELSE 0 END) AS successes,
+                         sum(CASE WHEN o.skipped = true THEN 1 ELSE 0 END) AS skipped
+                    RETURN state, loop_count, successes, skipped
                     ORDER BY loop_count DESC LIMIT 1
                 """)
                 record = result.single()
                 self.is_available = True
                 if record and record["loop_count"] > 0:
-                    success_rate = (record["successes"] / record["loop_count"]) * 100
+                    total_outcomes = record["successes"] + record.get("skipped", 0)
+                    # Calculate success rate only from engaged interventions (exclude skipped)
+                    engaged_interventions = record["loop_count"] - record.get("skipped", 0)
+                    success_rate = (record["successes"] / engaged_interventions * 100) if engaged_interventions > 0 else 0
+                    
                     trigger_result = session.run(
                         """
                         MATCH (prev:Entry)-[:HAS_INTERVENTION]->(pi:Intervention)-[:HAS_OUTCOME]->(o:Outcome)
@@ -221,7 +269,15 @@ class BehavioralStateManager:
                     coaching_message = (
                         f"You've disrupted {record['loop_count']} patterns in your top loop. Keep going!"
                     )
-                    if trigger_count > 0:
+                    
+                    # Adjust message if user is skipping interventions frequently
+                    skipped_count = record.get("skipped", 0)
+                    if skipped_count > 0 and skipped_count >= engaged_interventions:
+                        coaching_message = (
+                            f"You've triggered {record['loop_count']} interventions but haven't completed many. "
+                            "Try engaging with the next circuit breaker to build disruption momentum."
+                        )
+                    elif trigger_count > 0:
                         missing_need = "hydration" if hydration_misses >= rest_misses else "rest"
                         coaching_message = (
                             f"Pattern insight: unmet {missing_need} often appears before repeat high-risk stress loops. "

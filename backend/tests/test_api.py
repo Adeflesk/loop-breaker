@@ -148,6 +148,13 @@ def test_history_endpoint(client: TestClient, _patch_dependencies: _FakeDBManage
     assert first["was_successful"] is True
 
 
+def test_request_id_header_added_to_responses(client: TestClient, _patch_dependencies: _FakeDBManager):
+    response = client.get("/history")
+    assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
+    assert response.headers["X-Request-ID"]
+
+
 def test_feedback_with_halt_results(client: TestClient, _patch_dependencies: _FakeDBManager):
     response = client.post(
         "/feedback",
@@ -211,6 +218,50 @@ def test_insight_endpoint(client: TestClient, _patch_dependencies: _FakeDBManage
     assert body["streak"] == 3
     assert body["missing_need"] == "hydration"
     assert body["trigger_count"] == 2
+
+
+def test_insight_fallback_when_db_error(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    class BrokenDB:
+        def get_ai_insight(self):
+            raise RuntimeError("DB unavailable")
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
+    try:
+        response = client.get("/insight")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["message"].startswith("Welcome!")
+        assert body["success_rate"] == 0
+        assert body["top_loop"] == "None"
+    finally:
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: _patch_dependencies
+
+
+def test_history_fallback_when_db_error(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    class BrokenDB:
+        def get_history(self):
+            raise RuntimeError("DB error")
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
+    try:
+        response = client.get("/history")
+        assert response.status_code == 200
+        assert response.json() == []
+    finally:
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: _patch_dependencies
+
+
+def test_reset_returns_503_when_db_unavailable(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    class BrokenDB:
+        def reset_all_data(self):
+            return False
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
+    try:
+        response = client.delete("/reset", headers={"X-Confirm-Reset": "CONFIRM"})
+        assert response.status_code == 503
+    finally:
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: _patch_dependencies
 
 
 def test_insight_trend_logic(client: TestClient, _patch_dependencies: _FakeDBManager):

@@ -94,7 +94,10 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
     model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-    logger.info(f"Querying Ollama with model={model}, text_length={len(text)}")
+    logger.info(
+        "AI request",
+        extra={"event": "ai_query", "model": model, "text_length": len(text)},
+    )
 
     try:
         async with httpx.AsyncClient() as client:
@@ -109,10 +112,14 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
                 timeout=30,
             )
 
+        response.raise_for_status()
         raw_data = response.json()
 
         if "response" not in raw_data:
-            logger.warning("Ollama unexpected format: %s", raw_data)
+            logger.warning(
+                "Ollama unexpected format",
+                extra={"event": "ai_response_format", "raw_data": raw_data},
+            )
             return {
                 "detected_node": DEFAULT_NODE,
                 "emotion_sublabel": DEFAULT_SUBLABEL,
@@ -121,15 +128,25 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
             }
 
         ai_response = raw_data["response"]
-        logger.info(f"Ollama raw response: {ai_response[:300]}")  # Log first 300 chars
+        logger.info(
+            "Ollama raw response",
+            extra={"event": "ai_response", "snippet": ai_response[:300]},
+        )
         
         return clean_ai_response(ai_response)
 
+    except httpx.HTTPStatusError as exc:
+        logger.error(
+            "Ollama service returned non-200 status",
+            exc_info=True,
+            extra={"event": "ai_http_status_error", "status_code": exc.response.status_code},
+        )
     except Exception:
         logger.error("AI client error", exc_info=True)
-        return {
-            "detected_node": DEFAULT_NODE,
-            "emotion_sublabel": DEFAULT_SUBLABEL,
-            "confidence": 0.5,
-            "reasoning": "AI service unavailable.",
-        }
+
+    return {
+        "detected_node": DEFAULT_NODE,
+        "emotion_sublabel": DEFAULT_SUBLABEL,
+        "confidence": 0.5,
+        "reasoning": "AI service unavailable.",
+    }
