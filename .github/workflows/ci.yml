@@ -19,8 +19,17 @@ jobs:
       - name: Install backend dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt
 
-      - name: Run backend tests
-        run: python -m pytest backend/tests
+      - name: Run backend tests with coverage
+        working-directory: backend
+        run: python -m pytest tests --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=65
+
+      - name: Check app/ai.py coverage (≥70%)
+        working-directory: backend
+        run: python -m coverage report --include="app/ai.py" --fail-under=70
+
+      - name: Check app/db.py coverage (≥60%)
+        working-directory: backend
+        run: python -m coverage report --include="app/db.py" --fail-under=60
 
   frontend-tests:
     runs-on: ubuntu-latest
