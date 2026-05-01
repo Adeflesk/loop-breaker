@@ -349,3 +349,95 @@ def test_intervention_resets_loop(
     after_reset = client.post("/analyze", json={"user_text": "fresh start"}).json()
     assert after_reset["risk_level"] == "Low"
     assert after_reset["loop_detected"] is False
+
+
+# Q1.1.4 — Degraded DB behavior tests
+
+def test_analyze_degraded_db(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    """Test /analyze when DB is degraded (returns Low/False)."""
+
+    class DegradedDBManager:
+        def log_and_analyze(self, *args, **kwargs):
+            # Degraded mode: return Low risk, no loop
+            return ("Low", False)
+
+        def cleanup_stale_interventions(self, *args, **kwargs):
+            pass
+
+        def resolve_intervention(self, *args, **kwargs):
+            pass
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
+    try:
+        async def ai_response(_text: str) -> Dict[str, Any]:
+            return {
+                "detected_node": "Stress",
+                "emotion_sublabel": "Anxious",
+                "confidence": 0.8,
+                "reasoning": "test",
+            }
+
+        monkeypatch.setattr(app_main, "query_local_ai", ai_response)
+
+        response = client.post("/analyze", json={"user_text": "test"})
+        assert response.status_code == 200
+        body = response.json()
+        # Degraded DB returns Low risk, no loop detected
+        assert body["risk_level"] == "Low"
+        assert body["loop_detected"] is False
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_insight_when_get_ai_insight_returns_none(client: TestClient):
+    """Test /insight when get_ai_insight returns None (degraded mode)."""
+
+    class DegradedDBManager:
+        def get_ai_insight(self):
+            return None
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
+    try:
+        response = client.get("/insight")
+        assert response.status_code == 200
+        body = response.json()
+        # Should return welcome message for empty/degraded state
+        assert body["message"] == "Welcome! Start journaling to track your resilience."
+        assert body["success_rate"] == 0
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_history_empty_degraded(client: TestClient):
+    """Test /history when get_history returns empty list (degraded mode)."""
+
+    class DegradedDBManager:
+        def get_history(self):
+            return []
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
+    try:
+        response = client.get("/history")
+        assert response.status_code == 200
+        body = response.json()
+        # /history returns a list directly
+        assert body == []
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_feedback_when_db_unavailable(client: TestClient):
+    """Test /feedback when resolve_intervention is unavailable (no-op)."""
+
+    class DegradedDBManager:
+        def resolve_intervention(self, *args, **kwargs):
+            # No-op, doesn't crash
+            pass
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
+    try:
+        response = client.post("/feedback", json={"success": True})
+        # Should still return 200 (feedback is fire-and-forget)
+        assert response.status_code == 200
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]

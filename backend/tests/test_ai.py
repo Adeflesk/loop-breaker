@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import httpx
 import pytest
@@ -67,6 +67,47 @@ def test_clean_ai_response_confidence_below_zero_clamps_to_zero():
     assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
     assert result["confidence"] == 0.0
     assert result["reasoning"] == "negative confidence"
+
+
+# Q1.1.1 Edge case tests
+def test_clean_ai_response_missing_all_keys():
+    raw_text = '{}'
+    result = clean_ai_response(raw_text)
+
+    assert result["detected_node"] == DEFAULT_NODE
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
+    assert result["confidence"] == 0.5
+    assert result["reasoning"] is not None
+
+
+def test_clean_ai_response_confidence_as_null():
+    raw_text = '{"node": "Stress", "sublabel": "Anxious", "confidence": null, "reasoning": "test"}'
+    result = clean_ai_response(raw_text)
+
+    assert result["detected_node"] == "Stress"
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL  # Reset due to confidence < 0.6
+    assert result["confidence"] == 0.5
+    assert result["reasoning"] == "test"
+
+
+def test_clean_ai_response_confidence_exactly_at_boundary_0_6():
+    raw_text = '{"node": "Stress", "sublabel": "Anxious", "confidence": 0.6, "reasoning": "boundary test"}'
+    result = clean_ai_response(raw_text)
+
+    assert result["detected_node"] == "Stress"
+    assert result["emotion_sublabel"] == "Anxious"  # NOT reset because confidence >= 0.6
+    assert result["confidence"] == 0.6
+    assert result["reasoning"] == "boundary test"
+
+
+def test_clean_ai_response_reasoning_as_non_string():
+    raw_text = '{"node": "Procrastination", "sublabel": "Avoidance", "confidence": 0.8, "reasoning": 42}'
+    result = clean_ai_response(raw_text)
+
+    assert result["detected_node"] == "Procrastination"
+    assert result["emotion_sublabel"] == "Avoidance"
+    assert result["confidence"] == 0.8
+    assert result["reasoning"] == "42"  # Coerced to string
 
 
 class FakeResponse:
@@ -174,3 +215,50 @@ def test_query_local_ai_malformed_json_in_response_fallback():
     assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
     assert result["confidence"] == 0.5
     assert "JSON parse error" in result["reasoning"]
+
+
+# Q1.1.2 Exception path tests
+def test_query_local_ai_connect_error_fallback():
+    class ConnectErrorClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *args, **kwargs):
+            request = httpx.Request("POST", "http://localhost")
+            raise httpx.ConnectError("Connection refused", request=request)
+
+    with patch("app.ai.httpx.AsyncClient", return_value=ConnectErrorClient()):
+        result = asyncio.run(query_local_ai("Connect error test"))
+
+    assert result["detected_node"] == DEFAULT_NODE
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
+    assert result["confidence"] == 0.5
+    assert "unavailable" in result["reasoning"]
+
+
+def test_query_local_ai_uses_custom_ollama_url():
+    import os
+
+    fake_response = FakeResponse(
+        {"response": '{"node": "Anxiety", "sublabel": "Dread", "confidence": 0.9, "reasoning": "test"}'},
+        status_code=200,
+    )
+
+    custom_url = "http://custom-ollama:11434"
+    with patch.dict(os.environ, {"OLLAMA_URL": custom_url, "OLLAMA_MODEL": "custom-model"}):
+        with patch("app.ai.httpx.AsyncClient") as mock_client_class:
+            mock_client = FakeClient(fake_response)
+            mock_client_class.return_value = mock_client
+            mock_client.post = AsyncMock(return_value=fake_response)
+
+            result = asyncio.run(query_local_ai("Custom URL test"))
+
+            # Verify the POST was called with the custom URL
+            mock_client.post.assert_called_once()
+            call_args = mock_client.post.call_args
+            assert custom_url in str(call_args)
+
+    assert result["detected_node"] == "Anxiety"
