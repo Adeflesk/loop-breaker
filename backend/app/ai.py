@@ -46,7 +46,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     try:
         data = json.loads(raw_json)
     except json.JSONDecodeError as e:
-        logger.warning(f"AI returned invalid JSON: {raw_json[:200]} | Error: {e}")
+        logger.warning(
+            "AI returned invalid JSON",
+            extra={"event": "ai_json_error", "snippet": raw_json[:200], "error": str(e)},
+        )
         return {
             "detected_node": DEFAULT_NODE,
             "emotion_sublabel": DEFAULT_SUBLABEL,
@@ -60,7 +63,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     confidence = data.get("confidence", 0.5)
 
     # Log what AI actually returned before validation
-    logger.info(f"AI raw response: node={node}, sublabel={sublabel}, confidence={confidence}")
+    logger.info(
+        "AI raw response",
+        extra={"event": "ai_raw_response", "node": node, "sublabel": sublabel, "confidence": confidence},
+    )
 
     try:
         confidence_value = float(confidence)
@@ -70,7 +76,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     confidence_value = max(0.0, min(1.0, confidence_value))
 
     if node not in VALID_NODES:
-        logger.warning(f"AI returned invalid node '{node}'. Valid nodes: {VALID_NODES}. Defaulting to {DEFAULT_NODE}")
+        logger.warning(
+            "AI returned invalid node",
+            extra={"event": "ai_invalid_node", "node": node, "valid_nodes": VALID_NODES},
+        )
         node = DEFAULT_NODE
         sublabel = DEFAULT_SUBLABEL
 
@@ -84,7 +93,7 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
         "reasoning": str(reasoning),
     }
 
-async def query_local_ai(text: str) -> Dict[str, Any]:
+async def query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
         f"Journal entry: \"{text}\"\n\n"
@@ -96,7 +105,7 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
 
     logger.info(
         "AI request",
-        extra={"event": "ai_query", "model": model, "text_length": len(text)},
+        extra={"event": "ai_query", "model": model, "text_length": len(text), "request_id": request_id},
     )
 
     try:
@@ -118,7 +127,7 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
         if "response" not in raw_data:
             logger.warning(
                 "Ollama unexpected format",
-                extra={"event": "ai_response_format", "raw_data": raw_data},
+                extra={"event": "ai_response_format", "raw_data": raw_data, "request_id": request_id},
             )
             return {
                 "detected_node": DEFAULT_NODE,
@@ -130,7 +139,7 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
         ai_response = raw_data["response"]
         logger.info(
             "Ollama raw response",
-            extra={"event": "ai_response", "snippet": ai_response[:300]},
+            extra={"event": "ai_response", "snippet": ai_response[:300], "request_id": request_id},
         )
         
         return clean_ai_response(ai_response)
@@ -139,10 +148,10 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
         logger.error(
             "Ollama service returned non-200 status",
             exc_info=True,
-            extra={"event": "ai_http_status_error", "status_code": exc.response.status_code},
+            extra={"event": "ai_http_status_error", "status_code": exc.response.status_code, "request_id": request_id},
         )
     except Exception:
-        logger.error("AI client error", exc_info=True)
+        logger.error("AI client error", exc_info=True, extra={"event": "ai_generic_error", "request_id": request_id})
 
     return {
         "detected_node": DEFAULT_NODE,

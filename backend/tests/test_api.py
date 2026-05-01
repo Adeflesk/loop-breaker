@@ -101,7 +101,7 @@ class _FakeDBManager:
 @pytest.fixture(autouse=True)
 def _patch_dependencies(monkeypatch):
     # Patch AI to avoid hitting the real model server
-    async def fake_query_local_ai(text: str) -> Dict[str, Any]:
+    async def fake_query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
         return {
             "detected_node": "Stress",
             "emotion_sublabel": "Overwhelmed",
@@ -228,11 +228,9 @@ def test_insight_fallback_when_db_error(client: TestClient, monkeypatch: pytest.
     app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
     try:
         response = client.get("/insight")
-        assert response.status_code == 200
+        assert response.status_code == 503
         body = response.json()
-        assert body["message"].startswith("Welcome!")
-        assert body["success_rate"] == 0
-        assert body["top_loop"] == "None"
+        assert "temporarily unavailable" in body["detail"]
     finally:
         app_main.app.dependency_overrides[app_main.get_db] = lambda: _patch_dependencies
 
@@ -245,8 +243,9 @@ def test_history_fallback_when_db_error(client: TestClient, monkeypatch: pytest.
     app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
     try:
         response = client.get("/history")
-        assert response.status_code == 200
-        assert response.json() == []
+        assert response.status_code == 503
+        body = response.json()
+        assert "temporarily unavailable" in body["detail"]
     finally:
         app_main.app.dependency_overrides[app_main.get_db] = lambda: _patch_dependencies
 
@@ -297,7 +296,7 @@ def test_chronic_loop_detection(
     _patch_dependencies: _FakeDBManager,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    async def low_granularity_stress(_text: str) -> Dict[str, Any]:
+    async def low_granularity_stress(_text: str, request_id: str = "") -> Dict[str, Any]:
         return {
             "detected_node": "Stress",
             "emotion_sublabel": "General",
@@ -326,7 +325,7 @@ def test_intervention_resets_loop(
     _patch_dependencies: _FakeDBManager,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    async def low_granularity_stress(_text: str) -> Dict[str, Any]:
+    async def low_granularity_stress(_text: str, request_id: str = "") -> Dict[str, Any]:
         return {
             "detected_node": "Stress",
             "emotion_sublabel": "General",
@@ -369,7 +368,7 @@ def test_analyze_degraded_db(client: TestClient, monkeypatch: pytest.MonkeyPatch
 
     app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
     try:
-        async def ai_response(_text: str) -> Dict[str, Any]:
+        async def ai_response(_text: str, request_id: str = "") -> Dict[str, Any]:
             return {
                 "detected_node": "Stress",
                 "emotion_sublabel": "Anxious",

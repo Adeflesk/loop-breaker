@@ -1,10 +1,16 @@
 import logging
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+
+try:
+    import sentry_sdk
+except ImportError:
+    sentry_sdk = None
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -19,6 +25,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = create_db_manager()
+
+    # Initialize Sentry if DSN is provided and sentry_sdk is installed
+    sentry_dsn = os.getenv("SENTRY_DSN", "")
+    if sentry_dsn and sentry_sdk:
+        sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1)
 
     try:
         url = os.getenv("OLLAMA_URL", "http://localhost:11434")
@@ -70,7 +81,9 @@ async def log_requests(request: Request, call_next):
             "path": request.url.path,
         },
     )
+    start_time = time.perf_counter()
     response = await call_next(request)
+    latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
     logger.info(
         "request.complete",
@@ -80,6 +93,7 @@ async def log_requests(request: Request, call_next):
             "method": request.method,
             "path": request.url.path,
             "status_code": response.status_code,
+            "latency_ms": latency_ms,
         },
     )
     return response
@@ -90,10 +104,11 @@ def get_db(request: Request) -> BehavioralStateManager:
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
-async def analyze_behavior(request: AnalysisRequest, db: BehavioralStateManager = Depends(get_db)):
+async def analyze_behavior(body: AnalysisRequest, request: Request, db: BehavioralStateManager = Depends(get_db)):
+    request_id = getattr(request.state, "request_id", "")
     # 1. Get Intelligence from ai.py
     # Returns: {"detected_node": "...", "confidence": 0.0, "reasoning": "..."}
-    prediction = await query_local_ai(request.user_text)
+    prediction = await query_local_ai(body.user_text, request_id=request_id)
 
     # Ensure the node name matches our DB labels (Title Case)
     node = prediction["detected_node"].title()
@@ -116,13 +131,17 @@ async def analyze_behavior(request: AnalysisRequest, db: BehavioralStateManager 
 
     # 3. Log to Neo4j via db.py and check for behavioral loops
     # This stores the entry and links it to the Node and Intervention
-    risk, is_loop = db.log_and_analyze(
-        node,
-        prediction["confidence"],
-        breaker["title"],
-        breaker["task"],
-        sublabel=sublabel,
-    )
+    try:
+        risk, is_loop = db.log_and_analyze(
+            node,
+            prediction["confidence"],
+            breaker["title"],
+            breaker["task"],
+            sublabel=sublabel,
+        )
+    except Exception:
+        logger.error("DB log failed in /analyze", exc_info=True, extra={"request_id": request_id})
+        risk, is_loop = "Low", False
 
     # 4. Return the full payload to Flutter
     return {
@@ -142,12 +161,13 @@ async def analyze_behavior(request: AnalysisRequest, db: BehavioralStateManager 
 
 
 @app.get("/insight", response_model=InsightResponse)
-async def get_insight(db: BehavioralStateManager = Depends(get_db)):
+async def get_insight(request: Request, db: BehavioralStateManager = Depends(get_db)):
+    request_id = getattr(request.state, "request_id", "")
     try:
         stats = db.get_ai_insight()
     except Exception:
-        logger.error("Insight retrieval failed", exc_info=True)
-        stats = None
+        logger.error("Insight retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Insight service temporarily unavailable")
 
     if not stats:
         return {
@@ -175,25 +195,35 @@ async def get_insight(db: BehavioralStateManager = Depends(get_db)):
     }
 
 @app.get("/history")
-async def get_history(db: BehavioralStateManager = Depends(get_db)):
+async def get_history(request: Request, db: BehavioralStateManager = Depends(get_db)):
+    request_id = getattr(request.state, "request_id", "")
     try:
         return db.get_history()
     except Exception:
-        logger.error("History retrieval failed", exc_info=True)
-        return []
+        logger.error("History retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="History service temporarily unavailable")
 
 
 @app.post("/feedback")
-async def receive_feedback(request: FeedbackRequest, db: BehavioralStateManager = Depends(get_db)):
-    needs_payload = request.needs_check or request.halt_results
-    db.resolve_intervention(request.success, needs_payload)
-    return {"status": "recorded"}
+async def receive_feedback(body: FeedbackRequest, request: Request, db: BehavioralStateManager = Depends(get_db)):
+    request_id = getattr(request.state, "request_id", "")
+    try:
+        needs_payload = body.needs_check or body.halt_results
+        db.resolve_intervention(body.success, needs_payload)
+        return {"status": "recorded"}
+    except Exception:
+        logger.error("Feedback recording failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Feedback service temporarily unavailable")
 
 
 @app.get("/stats")
-async def get_stats(db: BehavioralStateManager = Depends(get_db)):
-    stats = db.get_trend_stats()
-    return stats
+async def get_stats(request: Request, db: BehavioralStateManager = Depends(get_db)):
+    request_id = getattr(request.state, "request_id", "")
+    try:
+        return db.get_trend_stats()
+    except Exception:
+        logger.error("Stats retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Stats service temporarily unavailable")
 
 
 @app.delete("/reset")
