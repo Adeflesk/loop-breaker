@@ -13,7 +13,7 @@ This document describes how to work with Claude on LoopBreaker tasks, including 
 ## Working with Claude: Best Practices
 
 ### Task Approach
-- **Start with planning:** Complex tasks (3+ steps, architectural decisions, refactoring) should use `/plan` or `EnterPlanMode` to align on approach before coding.
+- **Start with planning:** Complex tasks (3+ steps, architectural decisions, refactoring) should use `/plan` or `EnterPlanMode` to align on approach before coding. All plans are stored in `docs/` (e.g., `docs/rewire-gap-analysis.md`).
 - **Use skills where applicable:** Claude Code has specialized skills for debugging, TDD, code review, and architecture. If a task involves these, Claude will invoke the relevant skill.
 - **Verify before completion:** Use `/verify` or the verification skill before claiming work is done—run tests, check coverage, test the UI.
 - **Minimal scope:** Bug fixes should fix the bug, not clean up surrounding code. Features should deliver the feature, not add hypothetical helpers.

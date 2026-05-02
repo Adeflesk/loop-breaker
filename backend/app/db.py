@@ -75,14 +75,14 @@ class BehavioralStateManager:
                 # 1. Record Entry
                 session.run("""
                     MATCH (n:Node {name: $name})
-                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf, emotion_sublabel: $sublabel})
+                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf, emotion_sublabel: $sublabel, loop_broken: false})
                     CREATE (e)-[:RECORDS_STATE]->(n)
                 """, name=node_name, conf=confidence, sublabel=sublabel)
 
                 # 2. Check for Loop
                 result = session.run("""
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
-                    WHERE NOT (e.loop_broken = true)
+                    WHERE NOT (COALESCE(e.loop_broken, false) = true)
                     RETURN n.name as name
                     ORDER BY e.timestamp DESC LIMIT 3
                 """)
@@ -156,6 +156,7 @@ class BehavioralStateManager:
                     WITH i ORDER BY i.timestamp DESC LIMIT 1
                     CREATE (o:Outcome {
                         success: $success,
+                        skipped: false,
                         timestamp: datetime(),
                         hydration: $hydration,
                         fuel: $fuel,
@@ -230,10 +231,10 @@ class BehavioralStateManager:
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
                     OPTIONAL MATCH (e)-[:HAS_INTERVENTION]->(i:Intervention)
                     OPTIONAL MATCH (i)-[:HAS_OUTCOME]->(o:Outcome)
-                    WITH n.name AS state, 
-                         count(i) AS loop_count, 
+                    WITH n.name AS state,
+                         count(i) AS loop_count,
                          sum(CASE WHEN o.success = true THEN 1 ELSE 0 END) AS successes,
-                         sum(CASE WHEN o.skipped = true THEN 1 ELSE 0 END) AS skipped
+                         sum(CASE WHEN COALESCE(o.skipped, false) = true THEN 1 ELSE 0 END) AS skipped
                     RETURN state, loop_count, successes, skipped
                     ORDER BY loop_count DESC LIMIT 1
                 """)
@@ -318,12 +319,107 @@ class BehavioralStateManager:
             logger.error("DB trend stats error", exc_info=True)
             return {}
 
+    def create_thought_record(
+        self,
+        situation: str,
+        automatic_thought: str,
+        evidence_for: str,
+        evidence_against: str,
+        balanced_thought: str,
+        linked_node: Optional[str] = None,
+    ) -> bool:
+        """Creates a thought record (cognitive restructuring exercise)."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, cannot create thought record")
+            return False
+
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    CREATE (t:ThoughtRecord {
+                        timestamp: datetime(),
+                        situation: $situation,
+                        automatic_thought: $automatic_thought,
+                        evidence_for: $evidence_for,
+                        evidence_against: $evidence_against,
+                        balanced_thought: $balanced_thought,
+                        linked_node: $linked_node
+                    })
+                    """,
+                    situation=situation,
+                    automatic_thought=automatic_thought,
+                    evidence_for=evidence_for,
+                    evidence_against=evidence_against,
+                    balanced_thought=balanced_thought,
+                    linked_node=linked_node,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB thought record creation error", exc_info=True)
+            return False
+
+    def get_thought_records(self, limit: int = 20, offset: int = 0) -> list:
+        """Retrieves thought records with optional pagination."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning empty thought records")
+            return []
+
+        try:
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (t:ThoughtRecord)
+                    RETURN
+                        t.timestamp as timestamp,
+                        t.situation as situation,
+                        t.automatic_thought as automatic_thought,
+                        t.evidence_for as evidence_for,
+                        t.evidence_against as evidence_against,
+                        t.balanced_thought as balanced_thought,
+                        t.linked_node as linked_node
+                    ORDER BY t.timestamp DESC
+                    SKIP $offset LIMIT $limit
+                    """,
+                    offset=offset,
+                    limit=limit,
+                )
+
+                records = []
+                for record in result:
+                    clean = record.data()
+                    clean["timestamp"] = str(clean.get("timestamp", ""))
+                    records.append(clean)
+                return records
+        except Exception:
+            logger.error("DB thought records retrieval error", exc_info=True)
+            return []
+
+    def get_shame_count_24h(self) -> int:
+        """Returns number of Shame entries in the last 24 hours."""
+        if not self.is_available:
+            return 0
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node {name: 'Shame'})
+                    WHERE e.timestamp > datetime() - duration({hours: 24})
+                    RETURN count(e) as count
+                """)
+                record = result.single()
+                return int(record["count"]) if record else 0
+        except Exception:
+            logger.error("DB shame count error", exc_info=True)
+            return 0
+
     def reset_all_data(self) -> bool:
         """Wipes user data while keeping Node labels."""
         if not self.is_available:
             logger.warning("Neo4j unavailable, cannot reset data")
             return False
-            
+
         try:
             with self.driver.session() as session:
                 session.run("MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome DETACH DELETE n")

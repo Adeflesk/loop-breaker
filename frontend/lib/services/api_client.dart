@@ -31,10 +31,14 @@ class ApiClient {
   static Future<void> sendFeedback(
     bool success, {
     Map<String, bool>? needsCheck,
+    String? chosenVariant,
   }) async {
     final payload = <String, dynamic>{'success': success};
     if (needsCheck != null) {
       payload['needs_check'] = needsCheck;
+    }
+    if (chosenVariant != null) {
+      payload['chosen_variant'] = chosenVariant;
     }
 
     await _httpClient.post(
@@ -86,6 +90,35 @@ class ApiClient {
   static Future<bool> resetData() async {
     final response = await _httpClient.delete(_uri('/reset'));
     return response.statusCode == 200;
+  }
+
+  static Future<void> createThoughtRecord(Map<String, dynamic> data) async {
+    final response = await _httpClient.post(
+      _uri('/thought-record'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Thought record creation failed with status ${response.statusCode}');
+    }
+  }
+
+  static Future<List<dynamic>> fetchThoughtRecords({int limit = 20, int offset = 0}) async {
+    try {
+      final response = await _httpClient.get(
+        _uri('/thought-records?limit=$limit&offset=$offset'),
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded;
+        }
+      }
+    } catch (_) {
+      // Swallow and fall through to empty list
+    }
+    return [];
   }
 }
 

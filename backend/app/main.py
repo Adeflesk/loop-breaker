@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import List, Optional
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -17,7 +18,14 @@ from fastapi.responses import JSONResponse
 from .ai import query_local_ai
 from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
-from .models import AnalysisRequest, AnalysisResponse, FeedbackRequest, InsightResponse
+from .models import (
+    AnalysisRequest,
+    AnalysisResponse,
+    FeedbackRequest,
+    InsightResponse,
+    ThoughtRecordRequest,
+    ThoughtRecordResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +63,11 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:3000,http://localhost:8080,http://localhost:5173,"
     "http://127.0.0.1:3000,http://127.0.0.1:8080,http://127.0.0.1:5173",
 ).split(",")
+
+# Phase 5 Feature Flags
+FEATURE_SUBLABEL_ROUTING = os.getenv("FEATURE_SUBLABEL_ROUTING", "true").lower() == "true"
+FEATURE_THOUGHT_RECORDS = os.getenv("FEATURE_THOUGHT_RECORDS", "false").lower() == "true"
+FEATURE_SHAME_PROTOCOL = os.getenv("FEATURE_SHAME_PROTOCOL", "false").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -103,6 +116,44 @@ def get_db(request: Request) -> BehavioralStateManager:
     return request.app.state.db
 
 
+def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
+    """
+    Map (node, sublabel) to arc position (1-8) on the 8-node Rewire loop.
+
+    Returns: (position: int, label: str)
+    """
+    ARC_MAPPING = {
+        "Stress": (1, "Stress — Physiological Activation"),
+        "Procrastination": (3, "Procrastination — Avoidance Pattern"),
+        "Anxiety": (2, "Anxiety — Coping Struggle"),  # refined below
+        "Overwhelm": (2, "Overwhelm — Coping Struggle"),  # refined below
+        "Numbness": (7, "Numbness — Low Self-Esteem"),
+        "Shame": (8, "Shame — Loop Restart"),
+        "Isolation": (8, "Isolation — Shame Context"),
+    }
+
+    base_pos, base_label = ARC_MAPPING.get(node, (1, "Unknown Node"))
+
+    # Refine position based on sublabel for multi-position states
+    if node == "Anxiety":
+        if sublabel in ["Hypervigilance", "Panic"]:
+            return (5, "Node 5 of 8 — Hypervigilance")
+        else:  # Worry, Dread
+            return (2, "Node 2 of 8 — Coping Struggle (Anxious)")
+    elif node == "Overwhelm":
+        if sublabel in ["Scattered", "Cognitive Overload"]:
+            return (2, "Node 2 of 8 — Coping Struggle (Overwhelmed)")
+        else:  # Paralysis
+            return (4, "Node 4 of 8 — Neglecting Needs")
+    elif node == "Stress":
+        if sublabel in ["Burnout", "Burnt-out"]:
+            return (4, "Node 4 of 8 — Neglecting Needs (Burnout)")
+        else:  # Overload, Tension, Urgency
+            return (1, "Node 1 of 8 — Stress")
+
+    return (base_pos, f"Node {base_pos} of 8 — {base_label.split(' — ')[1] if ' — ' in base_label else base_label}")
+
+
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_behavior(body: AnalysisRequest, request: Request, db: BehavioralStateManager = Depends(get_db)):
     request_id = getattr(request.state, "request_id", "")
@@ -119,15 +170,20 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
     )
 
     # 2. Get the specific "Circuit Breaker" from interventions.py
-    # Defaults to a generic check-in if the AI picks a node not in our dictionary
-    breaker = INTERVENTIONS.get(
-        node,
-        {
+    # Supports both simple interventions and sublabel-variant interventions.
+    # Variants have a None key for default; simple interventions are just the dict.
+    intervention_options = INTERVENTIONS.get(node)
+
+    if intervention_options and None in intervention_options:
+        # State has sublabel variants—try to match sublabel first, then None default
+        breaker = intervention_options.get(sublabel) or intervention_options.get(None)
+    else:
+        # Regular intervention (no variants, or state not found)
+        breaker = intervention_options or {
             "title": "General Check-in",
             "task": "Take a moment to breathe and observe your surroundings.",
             "education": "Checking in helps move from reactive patterns to conscious awareness."
         }
-    )
 
     # 3. Log to Neo4j via db.py and check for behavioral loops
     # This stores the entry and links it to the Node and Intervention
@@ -143,7 +199,38 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         logger.error("DB log failed in /analyze", exc_info=True, extra={"request_id": request_id})
         risk, is_loop = "Low", False
 
-    # 4. Return the full payload to Flutter
+    # 4. Compute arc position (8-node loop positioning)
+    arc_pos, arc_label = compute_arc_position(node, sublabel)
+
+    # 5. Build list of available intervention variants for this state/sublabel
+    variants = None
+    intervention_options = INTERVENTIONS.get(node)
+    if intervention_options and None in intervention_options:
+        # This state has sublabel variants
+        variant_list = []
+        for key, variant in intervention_options.items():
+            if key is not None and isinstance(variant, dict) and "title" in variant:
+                variant_list.append(variant)
+        if len(variant_list) > 1:
+            variants = variant_list
+
+    # 6. Populate MSC steps for Shame interventions
+    msc_steps = None
+    shame_safety_alert = None
+    if FEATURE_SHAME_PROTOCOL and node == "Shame":
+        raw_steps = INTERVENTIONS.get("Shame", {}).get("msc_steps")
+        if raw_steps:
+            msc_steps = raw_steps
+
+        # Shame safety alert: check if 3+ times in 24h
+        try:
+            shame_count = db.get_shame_count_24h()
+            shame_safety_alert = shame_count >= 3
+        except Exception:
+            logger.error("Shame count check failed", exc_info=True, extra={"request_id": request_id})
+            shame_safety_alert = False
+
+    # 7. Return the full payload to Flutter
     return {
         "detected_node": node,
         "sublabel": sublabel,
@@ -152,11 +239,15 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "reasoning": prediction["reasoning"],
         "risk_level": risk,
         "loop_detected": is_loop,
-        # Only send intervention details if a loop was actually detected
-        "intervention_title": breaker["title"] if is_loop else "",
-        "intervention_task": breaker["task"] if is_loop else "",
-        "education_info": breaker["education"] if is_loop else "",
-        "intervention_type": breaker.get("type") if is_loop else None
+        "intervention_title": breaker["title"],
+        "intervention_task": breaker["task"],
+        "education_info": breaker["education"],
+        "intervention_type": breaker.get("type"),
+        "node_arc_position": arc_pos,
+        "node_arc_label": arc_label,
+        "intervention_variants": variants,
+        "msc_steps": msc_steps,
+        "shame_safety_alert": shame_safety_alert,
     }
 
 
@@ -236,6 +327,40 @@ async def reset_database(x_confirm_reset: str = Header(None), db: BehavioralStat
     if db.reset_all_data():
         return {"status": "Database reset successful"}
     raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@app.post("/thought-record", status_code=201)
+async def create_thought_record(
+    body: ThoughtRecordRequest, request: Request, db: BehavioralStateManager = Depends(get_db)
+):
+    request_id = getattr(request.state, "request_id", "")
+    try:
+        success = db.create_thought_record(
+            situation=body.situation,
+            automatic_thought=body.automatic_thought,
+            evidence_for=body.evidence_for,
+            evidence_against=body.evidence_against,
+            balanced_thought=body.balanced_thought,
+            linked_node=body.linked_node,
+        )
+        if success:
+            return {"status": "created"}
+        raise HTTPException(status_code=503, detail="Thought record creation failed")
+    except Exception:
+        logger.error("Thought record creation failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Thought record service temporarily unavailable")
+
+
+@app.get("/thought-records", response_model=List[ThoughtRecordResponse])
+async def get_thought_records(
+    limit: int = 20, offset: int = 0, request: Request = None, db: BehavioralStateManager = Depends(get_db)
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_thought_records(limit=limit, offset=offset)
+    except Exception:
+        logger.error("Thought records retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Thought records service temporarily unavailable")
 
 
 if __name__ == "__main__":

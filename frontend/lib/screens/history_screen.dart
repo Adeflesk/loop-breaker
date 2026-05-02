@@ -181,6 +181,78 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   },
                 ),
               ),
+              // Thought Records Section
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+                child: Text(
+                  'Thought Records',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              FutureBuilder<List<dynamic>>(
+                future: ApiClient.fetchThoughtRecords(),
+                builder: (context, thoughtSnapshot) {
+                  if (thoughtSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  final thoughtRecords = thoughtSnapshot.data ?? [];
+                  if (thoughtRecords.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No thought records yet.'),
+                    );
+                  }
+
+                  return Expanded(
+                    child: ListView.builder(
+                      itemCount: thoughtRecords.length,
+                      itemBuilder: (context, index) {
+                        final record = thoughtRecords[index];
+                        final String balancedThought = record['balanced_thought']?.toString() ?? '';
+                        final String linkedNode = record['linked_node']?.toString() ?? 'Unlinked';
+                        final String timeStr = (record['timestamp']?.toString() ?? '').substring(0, 10);
+
+                        return ExpansionTile(
+                          leading: const Icon(Icons.lightbulb_outline, color: Colors.amber),
+                          title: Text(
+                            balancedThought.length > 50
+                                ? '${balancedThought.substring(0, 50)}...'
+                                : balancedThought,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text('$linkedNode · $timeStr'),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildThoughtField('Situation:', record['situation']),
+                                  const SizedBox(height: 12),
+                                  _buildThoughtField('Automatic Thought:', record['automatic_thought']),
+                                  const SizedBox(height: 12),
+                                  _buildThoughtField('Evidence For:', record['evidence_for']),
+                                  const SizedBox(height: 12),
+                                  _buildThoughtField('Evidence Against:', record['evidence_against']),
+                                  const SizedBox(height: 12),
+                                  _buildThoughtField('Balanced Alternative:', record['balanced_thought']),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: OutlinedButton.icon(
@@ -199,6 +271,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildThoughtField(String label, dynamic value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value?.toString() ?? '',
+          style: const TextStyle(fontSize: 13),
+        ),
+      ],
     );
   }
 
