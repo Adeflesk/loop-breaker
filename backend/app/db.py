@@ -187,6 +187,24 @@ class BehavioralStateManager:
             self.is_available = False
             logger.error("DB resolve_intervention error", exc_info=True)
 
+    def increment_intervention_seen_count(self, intervention_title: str) -> None:
+        """Increment seen_count for an intervention.
+
+        Called after intervention is returned in /analyze to track exposure.
+        Gracefully handles DB unavailability.
+        """
+        if not self.is_available:
+            return
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    MATCH (i:Intervention {title: $title})
+                    SET i.seen_count = COALESCE(i.seen_count, 0) + 1
+                """, title=intervention_title)
+        except Exception:
+            logger.error("DB increment seen_count error", exc_info=True)
+            # Non-critical; do not propagate
+
     def get_history(self) -> List[Dict[str, Any]]:
         """Fetches the last 20 entries for the Dashboard."""
         if not self.is_available:
