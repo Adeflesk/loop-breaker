@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
+import '../widgets/loop_path_chart.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -51,8 +52,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   data.length
               : 0.0;
 
-          return Column(
-            children: [
+          return SingleChildScrollView(
+            child: Column(
+              children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -139,56 +141,118 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               const Divider(),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: data.length,
-                  itemBuilder: (context, index) {
-                    final item = data[index];
-                    final bool isLoop = (item['intervention'] != null && 
-                        item['intervention'] != 'None' && 
-                        item['intervention'].toString().isNotEmpty);
-                    final String state = item['state']?.toString() ?? 'Unknown';
-                    final String intervention = item['intervention']?.toString() ?? '';
-                    
-                    // Safe time formatting: check if time exists and has sufficient length
-                    String timeStr = '';
-                    if (item['time'] != null) {
-                      final timeString = item['time'].toString();
-                      if (timeString.length >= 16) {
-                        timeStr = timeString.substring(11, 16);
-                      } else {
-                        timeStr = timeString;
-                      }
-                    }
-                    
-                    return ListTile(
-                      leading: Icon(
-                        item['was_successful'] == true
-                            ? Icons.verified
-                            : Icons.circle,
-                        color: item['was_successful'] == true
-                            ? Colors.green
-                            : Colors.grey,
-                      ),
-                      title: Text(state),
-                      subtitle: Text(
-                        isLoop
-                            ? 'Intervention: $intervention'
-                            : 'Healthy State',
-                      ),
-                      trailing: Text(timeStr),
-                    );
-                  },
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Recent Entries',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-              // Thought Records Section
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
-                child: Text(
-                  'Thought Records',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: data.length,
+                itemBuilder: (context, index) {
+                  final item = data[index];
+                  final bool isLoop = (item['intervention'] != null &&
+                      item['intervention'] != 'None' &&
+                      item['intervention'].toString().isNotEmpty);
+                  final String state = item['state']?.toString() ?? 'Unknown';
+                  final String intervention = item['intervention']?.toString() ?? '';
+
+                  // Safe time formatting: check if time exists and has sufficient length
+                  String timeStr = '';
+                  if (item['time'] != null) {
+                    final timeString = item['time'].toString();
+                    if (timeString.length >= 16) {
+                      timeStr = timeString.substring(11, 16);
+                    } else {
+                      timeStr = timeString;
+                    }
+                  }
+
+                  return ListTile(
+                    leading: Icon(
+                      item['was_successful'] == true
+                          ? Icons.verified
+                          : Icons.circle,
+                      color: item['was_successful'] == true
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+                    title: Text(state),
+                    subtitle: Text(
+                      isLoop
+                          ? 'Intervention: $intervention'
+                          : 'Healthy State',
+                    ),
+                    trailing: Text(timeStr),
+                  );
+                },
+              ),
+              // Loop Path Section
+              const SizedBox(height: 24),
+              const Padding(
+                padding: EdgeInsets.only(left: 16, top: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Your Loop Pattern',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ),
+              FutureBuilder<Map<String, dynamic>>(
+                future: ApiClient.getLoopPath(days: 30),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final pathData = snapshot.data!;
+                  final path = pathData['path'] as List? ?? [];
+                  final analysis = pathData['analysis'] as Map? ?? {};
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LoopPathChart(
+                        path: path,
+                        mostCommonEntry: analysis['most_common_entry'] as String?,
                       ),
+                      if (analysis['most_common_entry'] != null &&
+                          analysis['cycle_length_hours'] != null)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Most common entry: ${analysis['most_common_entry']} (repeats every ${analysis['cycle_length_hours']}h)',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              // Thought Records Section
+              const SizedBox(height: 24),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Thought Records',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
               FutureBuilder<List<dynamic>>(
@@ -209,9 +273,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     );
                   }
 
-                  return Expanded(
-                    child: ListView.builder(
-                      itemCount: thoughtRecords.length,
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: thoughtRecords.length,
                       itemBuilder: (context, index) {
                         final record = thoughtRecords[index];
                         final String balancedThought = record['balanced_thought']?.toString() ?? '';
@@ -249,8 +314,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ],
                         );
                       },
-                    ),
-                  );
+                    );
                 },
               ),
               Padding(
@@ -267,7 +331,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           );
         },
       ),
