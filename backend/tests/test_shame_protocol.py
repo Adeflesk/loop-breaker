@@ -133,12 +133,12 @@ class TestMSCProtocolAPI:
             # Step 1: Mindfulness
             assert steps[0]["name"] == "Mindfulness"
             assert "hand on your heart" in steps[0]["task"].lower()
-            assert "acknowledge pain" in steps[0]["education"].lower() or "space between" in steps[0]["education"].lower()
+            assert "noticing" in steps[0]["education"].lower() or "judging" in steps[0]["education"].lower()
 
             # Step 2: Common Humanity
             assert steps[1]["name"] == "Common Humanity"
             assert "not alone" in steps[1]["task"].lower()
-            assert "shared human" in steps[1]["education"].lower()
+            assert "not alone" in steps[1]["education"].lower() or "universal" in steps[1]["education"].lower()
 
             # Step 3: Self-Kindness
             assert steps[2]["name"] == "Self-Kindness"

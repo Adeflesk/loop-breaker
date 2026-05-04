@@ -58,6 +58,7 @@ class AnalysisResponse(BaseModel):
     intervention_title: str
     intervention_task: str
     education_info: Optional[str] = None
+    education_depth: Optional[str] = None  # "introduce" | "reinforce" | "deepen"
     intervention_type: Optional[str] = None
     node_arc_position: Optional[int] = None  # 1-8, position in the Rewire loop
     node_arc_label: Optional[str] = None  # e.g., "Node 3 of 8 — Procrastination"

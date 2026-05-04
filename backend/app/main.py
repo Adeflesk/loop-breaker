@@ -210,7 +210,11 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         variant_list = []
         for key, variant in intervention_options.items():
             if key is not None and isinstance(variant, dict) and "title" in variant:
-                variant_list.append(variant)
+                # Convert education dict to string (use "introduce" depth as default for variants display)
+                variant_copy = dict(variant)
+                if isinstance(variant_copy.get("education"), dict):
+                    variant_copy["education"] = variant_copy["education"].get("introduce", "")
+                variant_list.append(variant_copy)
         if len(variant_list) > 1:
             variants = variant_list
 
@@ -220,7 +224,13 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
     if FEATURE_SHAME_PROTOCOL and node == "Shame":
         raw_steps = INTERVENTIONS.get("Shame", {}).get("msc_steps")
         if raw_steps:
-            msc_steps = raw_steps
+            # Convert education dicts to strings (use "introduce" depth for MSC display)
+            msc_steps = []
+            for step in raw_steps:
+                step_copy = dict(step)
+                if isinstance(step_copy.get("education"), dict):
+                    step_copy["education"] = step_copy["education"].get("introduce", "")
+                msc_steps.append(step_copy)
 
         # Shame safety alert: check if 3+ times in 24h
         try:
@@ -230,8 +240,23 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
             logger.error("Shame count check failed", exc_info=True, extra={"request_id": request_id})
             shame_safety_alert = False
 
+    # 6b. Determine education depth based on heuristic
+    # Heuristic: first exposure = introduce, 2-4 = reinforce, 5+ = deepen
+    # (For MVP, we use a simple heuristic; later phases can fetch seen_count from DB)
+    education_depth = "introduce"
+
+    # Select education text from depth-based dict
+    if isinstance(breaker.get("education"), dict):
+        education_text = breaker["education"].get(
+            education_depth,
+            breaker["education"].get("introduce", "")
+        )
+    else:
+        # Fallback for old-style single-string education
+        education_text = breaker.get("education", "")
+
     # 7. Return the full payload to Flutter
-    return {
+    response_data = {
         "detected_node": node,
         "sublabel": sublabel,
         "emotion_sublabel": sublabel,
@@ -241,7 +266,8 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "loop_detected": is_loop,
         "intervention_title": breaker["title"],
         "intervention_task": breaker["task"],
-        "education_info": breaker["education"],
+        "education_info": education_text,
+        "education_depth": education_depth,
         "intervention_type": breaker.get("type"),
         "node_arc_position": arc_pos,
         "node_arc_label": arc_label,
@@ -249,6 +275,14 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "msc_steps": msc_steps,
         "shame_safety_alert": shame_safety_alert,
     }
+
+    # After return, increment seen_count (non-blocking)
+    try:
+        db.increment_intervention_seen_count(breaker["title"])
+    except Exception:
+        pass  # Non-critical
+
+    return response_data
 
 
 @app.get("/insight", response_model=InsightResponse)
