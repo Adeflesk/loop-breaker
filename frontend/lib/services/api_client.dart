@@ -120,5 +120,17 @@ class ApiClient {
     }
     return [];
   }
+
+  static Future<Map<String, dynamic>> getLoopPath({int days = 30}) async {
+    try {
+      final response = await _httpClient.get(_uri('/loop-path?days=$days'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint("Loop path fetch error: $e");
+    }
+    return {"path": [], "analysis": {}};
+  }
 }
 
