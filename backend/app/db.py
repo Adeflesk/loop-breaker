@@ -448,6 +448,106 @@ class BehavioralStateManager:
             logger.error("DB reset error", exc_info=True)
             return False
 
+    def get_loop_path(self, days: int = 30) -> List[Dict[str, Any]]:
+        """
+        Returns list of entries in chronological order with their states.
+        Used to compute loop sequences and patterns over the past N days.
+        """
+        if not self.is_available:
+            return []
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
+                    WHERE e.timestamp > datetime() - duration({days: $days})
+                    RETURN
+                        e.timestamp as timestamp,
+                        n.name as state,
+                        e.confidence as confidence,
+                        CASE WHEN (e)-[:HAS_INTERVENTION]->() THEN true ELSE false END as has_intervention
+                    ORDER BY e.timestamp ASC
+                """, days=days)
+
+                path = []
+                for record in result:
+                    path.append({
+                        "timestamp": str(record["timestamp"]),
+                        "state": record["state"],
+                        "confidence": float(record["confidence"]) if record["confidence"] else 0.0,
+                        "has_intervention": bool(record["has_intervention"]),
+                    })
+                self.is_available = True
+                return path
+        except Exception:
+            logger.error("DB loop path error", exc_info=True)
+            return []
+
+    def analyze_loop_path(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Analyze personal loop patterns: entry point, cycle length, transitions.
+
+        Returns:
+            {
+                "most_common_entry": "Stress",
+                "cycle_length_hours": 4.5,
+                "total_cycles": 12,
+            }
+        """
+        if not self.is_available:
+            return {}
+
+        path = self.get_loop_path(days=days)
+        if not path:
+            return {}
+
+        from datetime import datetime, timedelta
+
+        # Find most common starting state (first state in each "cycle")
+        # Heuristic: gap > 6 hours = new cycle
+        entry_counts = {}
+        current_cycle_start = None
+        last_timestamp = None
+
+        for entry in path:
+            ts = entry["timestamp"]
+            if last_timestamp:
+                time_diff = (
+                    datetime.fromisoformat(ts) - datetime.fromisoformat(last_timestamp)
+                ).total_seconds() / 3600
+                if time_diff > 6:
+                    current_cycle_start = entry["state"]
+            else:
+                current_cycle_start = entry["state"]
+
+            if current_cycle_start:
+                entry_counts[current_cycle_start] = entry_counts.get(current_cycle_start, 0) + 1
+            last_timestamp = ts
+
+        most_common_entry = max(entry_counts, key=entry_counts.get) if entry_counts else None
+
+        # Compute average cycle length (time between repeats of most common state)
+        avg_cycle_length = None
+        if most_common_entry:
+            timestamps_of_state = [
+                entry["timestamp"] for entry in path
+                if entry["state"] == most_common_entry
+            ]
+            if len(timestamps_of_state) > 1:
+                time_diffs = []
+                for i in range(1, len(timestamps_of_state)):
+                    diff = (
+                        datetime.fromisoformat(timestamps_of_state[i]) -
+                        datetime.fromisoformat(timestamps_of_state[i-1])
+                    ).total_seconds() / 3600
+                    time_diffs.append(diff)
+                avg_cycle_length = sum(time_diffs) / len(time_diffs) if time_diffs else None
+
+        return {
+            "most_common_entry": most_common_entry,
+            "cycle_length_hours": round(avg_cycle_length, 2) if avg_cycle_length else None,
+            "total_cycles": len(entry_counts),
+        }
+
 def create_db_manager() -> BehavioralStateManager:
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")
