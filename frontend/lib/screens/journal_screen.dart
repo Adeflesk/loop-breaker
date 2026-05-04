@@ -288,33 +288,27 @@ class _JournalScreenState extends State<JournalScreen> {
               ),
               const SizedBox(height: 25),
               if (isBreathing) const BreathingCircle(),
-              // --- NEW: Educational Content Section ---
+              // --- NEW: Educational Content Section (Expandable) ---
               if (education.isNotEmpty) ...[
-                const Divider(height: 30),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 12),
+                ExpansionTile(
+                  title: const Text(
+                    'Why this works (neuroscience)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.lightbulb_outline,
-                          size: 20, color: Colors.blueAccent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          education,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blueGrey.shade800,
-                            fontStyle: FontStyle.italic,
-                          ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Text(
+                        education,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blueGrey.shade700,
+                          height: 1.6,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ],
