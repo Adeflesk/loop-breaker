@@ -132,5 +132,36 @@ class ApiClient {
     }
     return {"path": [], "analysis": {}};
   }
+
+  static Future<List<dynamic>> fetchJournalEntries({int limit = 50}) async {
+    try {
+      final response = await _httpClient.get(_uri('/journal-entries?limit=$limit'));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded;
+        }
+      }
+    } catch (e) {
+      debugPrint('Journal entries fetch error: $e');
+    }
+    return [];
+  }
+
+  static Future<void> recordJournalOutcome(
+    String entryId,
+    String outcome, {
+    String? notes,
+  }) async {
+    try {
+      await _httpClient.patch(
+        _uri('/journal-entries/$entryId/outcome'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'outcome': outcome, 'notes': notes}),
+      );
+    } catch (e) {
+      debugPrint('Journal outcome error: $e');
+    }
+  }
 }
 

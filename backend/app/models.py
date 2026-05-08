@@ -65,6 +65,7 @@ class AnalysisResponse(BaseModel):
     intervention_variants: Optional[List[InterventionOption]] = None  # Alternative approaches for this state/sublabel
     msc_steps: Optional[List[MscStep]] = None  # Mindful Self-Compassion steps for Shame interventions
     shame_safety_alert: Optional[bool] = None  # True if Shame detected 3+ times in 24 hours
+    journal_entry_id: Optional[str] = None  # UUID of saved journal entry, for outcome tracking
 
 class InsightResponse(BaseModel):
     """For the Dashboard summary card."""
@@ -75,3 +76,25 @@ class InsightResponse(BaseModel):
     streak: Optional[int] = None
     missing_need: Optional[str] = None
     trigger_count: Optional[int] = None
+
+
+class JournalEntryResponse(BaseModel):
+    """Persisted journal entry with analysis and user outcome."""
+    id: str
+    timestamp: str
+    raw_text: str
+    detected_state: str
+    sublabel: Optional[str] = None
+    confidence: float
+    reasoning: str
+    risk_level: str
+    intervention_title: str
+    intervention_type: Optional[str] = None
+    user_outcome: Optional[str] = None  # "helped" | "didn't help" | "neutral"
+    user_notes: Optional[str] = None
+
+
+class JournalOutcomeRequest(BaseModel):
+    """Record user's self-reported outcome on a journal entry."""
+    outcome: str  # "helped" | "didn't help" | "neutral"
+    notes: Optional[str] = None

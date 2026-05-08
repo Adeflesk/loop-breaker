@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../screens/history_screen.dart';
-import '../screens/thought_record_screen.dart';
+import 'thought_record_screen.dart';
 import '../services/api_client.dart';
 import '../widgets/breathing_circle.dart';
+import '../widgets/risk_level_badge.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -19,6 +19,7 @@ class _JournalScreenState extends State<JournalScreen> {
   bool _isLoading = false;
   String _aiReasoning = '';
   String? _arcLabel;  // Node position in 8-node loop
+  String? _lastJournalEntryId;  // Track the entry ID for outcome recording
 
   Future<void> _analyzeEntry() async {
     if (_controller.text.trim().isEmpty) return;
@@ -26,6 +27,7 @@ class _JournalScreenState extends State<JournalScreen> {
 
     try {
       final data = await ApiClient.analyzeEntry(_controller.text);
+      _lastJournalEntryId = data['journal_entry_id'] as String?;
       setState(() {
         final node = data['detected_node'] ?? 'Unknown';
         final sublabel = data['sublabel'] ?? data['emotion_sublabel'] ?? 'unspecified';
@@ -154,9 +156,17 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  Future<void> _sendFeedback(bool success, {Map<String, bool>? needsCheck, String? chosenVariant}) async {
+  Future<void> _sendFeedback(
+    bool success, {
+    Map<String, bool>? needsCheck,
+    String? chosenVariant,
+    String? outcome,
+  }) async {
     try {
       await ApiClient.sendFeedback(success, needsCheck: needsCheck, chosenVariant: chosenVariant);
+      if (_lastJournalEntryId != null && outcome != null) {
+        await ApiClient.recordJournalOutcome(_lastJournalEntryId!, outcome);
+      }
     } catch (e) {
       debugPrint('Feedback failed: $e');
     }
@@ -164,6 +174,49 @@ class _JournalScreenState extends State<JournalScreen> {
 
   void _showInterventionDialog(Map<String, dynamic> data) {
     _showStandardInterventionDialog(data);
+  }
+
+  Widget _buildMetricBubble({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -204,9 +257,10 @@ class _JournalScreenState extends State<JournalScreen> {
                   const Divider(height: 30),
                   ...needs.map(
                     (need) => CheckboxListTile(
-                      secondary: Icon(need['icon'], color: Colors.blueAccent),
+                      secondary: Icon(need['icon'], color: const Color(0xFF5B9B96)),
                       title: Text(need['label']),
                       value: need['checked'] as bool,
+                      activeColor: const Color(0xFF5B9B96),
                       onChanged: (val) {
                         setDialogState(() => need['checked'] = val ?? false);
                       },
@@ -267,13 +321,16 @@ class _JournalScreenState extends State<JournalScreen> {
                 isBreathing
                     ? Icons.air
                     : (isWater ? Icons.water_drop : Icons.psychology),
-                color: Colors.blueAccent,
+                color: const Color(0xFF5B9B96),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -284,17 +341,20 @@ class _JournalScreenState extends State<JournalScreen> {
               Text(
                 task,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16, height: 1.4),
               ),
               const SizedBox(height: 25),
               if (isBreathing) const BreathingCircle(),
-              // --- NEW: Educational Content Section (Expandable) ---
               if (education.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 ExpansionTile(
                   title: const Text(
                     'Why this works (neuroscience)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5B9B96),
+                    ),
                   ),
                   children: [
                     Padding(
@@ -303,7 +363,7 @@ class _JournalScreenState extends State<JournalScreen> {
                         education,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blueGrey.shade700,
+                          color: Colors.grey[700],
                           height: 1.6,
                         ),
                       ),
@@ -333,31 +393,27 @@ class _JournalScreenState extends State<JournalScreen> {
             TextButton(
               onPressed: () {
                 final chosenVariant = data['chosen_variant'] as String?;
-                _sendFeedback(false, chosenVariant: chosenVariant);
+                _sendFeedback(false, chosenVariant: chosenVariant, outcome: "didn't help");
                 Navigator.pop(context);
               },
-              child: const Text(
+              child: Text(
                 "Didn't help",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey[600]),
               ),
             ),
             ElevatedButton(
               onPressed: () {
                 final chosenVariant = data['chosen_variant'] as String?;
-                _sendFeedback(true, chosenVariant: chosenVariant);
+                _sendFeedback(true, chosenVariant: chosenVariant, outcome: 'helped');
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Loop Broken! Proud of you.'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Color(0xFF5B9B96),
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('I feel better /Action Completed'),
+              child: const Text('I feel better / Action Completed'),
             ),
           ],
         );
@@ -400,7 +456,7 @@ class _JournalScreenState extends State<JournalScreen> {
                           value: stepNum / mscSteps.length,
                           minHeight: 4,
                           backgroundColor: Colors.grey.shade300,
-                          color: Colors.deepPurple.shade400,
+                          color: const Color(0xFF5B9B96),
                         ),
                       ),
                     ],
@@ -421,21 +477,25 @@ class _JournalScreenState extends State<JournalScreen> {
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: const Color(0xFF5B9B96).withOpacity(0.08),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF5B9B96).withOpacity(0.2),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(Icons.lightbulb_outline,
-                                size: 20, color: Colors.blueAccent),
+                                size: 20, color: Color(0xFF5B9B96)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 stepEducation,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.blueGrey.shade700,
+                                  color: Colors.grey[700],
                                   fontStyle: FontStyle.italic,
                                   height: 1.4,
                                 ),
@@ -458,7 +518,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       ElevatedButton(
                         onPressed: () {
                           final chosenVariant = data['chosen_variant'] as String?;
-                          _sendFeedback(true, chosenVariant: chosenVariant);
+                          _sendFeedback(true, chosenVariant: chosenVariant, outcome: 'helped');
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -527,19 +587,8 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LoopBreaker AI'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HistoryScreen(),
-              ),
-            ),
-          ),
-        ],
+        title: const Text('LoopBreaker'),
+        elevation: 0,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -555,16 +604,24 @@ class _JournalScreenState extends State<JournalScreen> {
                   final String message = snapshot.data?['message'] ?? "";
                   final double? successRate =
                       snapshot.data?['success_rate']?.toDouble();
-                  final String? topLoop = snapshot.data?['top_loop'];
                   final String? trend = snapshot.data?['trend'];
                   final int? streak = snapshot.data?['streak'];
 
-                  return Card(
-                    elevation: 0,
-                    color: Colors.deepPurple.shade50.withOpacity(0.6),
-                    shape: RoundedRectangleBorder(
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5B9B96).withOpacity(0.06),
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.deepPurple.shade100),
+                      border: Border.all(
+                        color: const Color(0xFF5B9B96).withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -574,109 +631,122 @@ class _JournalScreenState extends State<JournalScreen> {
                           Row(
                             children: [
                               const Icon(Icons.auto_awesome,
-                                  color: Colors.deepPurple, size: 20),
+                                  color: Color(0xFF5B9B96), size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 "AI Insight",
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple.shade900,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[800],
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           Text(
                             message,
                             style: const TextStyle(
-                                fontSize: 14, color: Colors.black87),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                              height: 1.5,
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Icon(
-                                _riskLevel == 'High'
-                                    ? Icons.warning_amber_rounded
-                                    : Icons.check_circle_outline,
+                          const SizedBox(height: 16),
+                          // Recovery State Badge
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _riskLevel == 'High'
+                                  ? Colors.orange.withOpacity(0.1)
+                                  : Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: _riskLevel == 'High'
-                                    ? Colors.orange
-                                    : Colors.green,
+                                    ? Colors.orange.withOpacity(0.3)
+                                    : Colors.green.withOpacity(0.3),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _riskLevel == 'High'
-                                    ? 'State: Sympathetic Activation'
-                                    : 'State: Parasympathetic Recovery',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (trend != null && trend != 'unknown') ...[
-                            const SizedBox(height: 8),
-                            Row(
+                            ),
+                            child: Row(
                               children: [
                                 Icon(
-                                  trend == 'improving'
+                                  _riskLevel == 'High'
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.check_circle_outline,
+                                  color: _riskLevel == 'High'
+                                      ? Colors.orange
+                                      : Colors.green,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Recovery Status',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[600],
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _riskLevel == 'High'
+                                            ? 'Sympathetic Activation'
+                                            : 'Parasympathetic Recovery',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: _riskLevel == 'High'
+                                              ? Colors.orange
+                                              : Colors.green,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Metrics Grid
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              if (successRate != null) _buildMetricBubble(
+                                icon: Icons.trending_up,
+                                label: 'Resilience',
+                                value: '${successRate.toStringAsFixed(0)}%',
+                                color: Colors.green,
+                              ),
+                              if (trend != null && trend != 'unknown')
+                                _buildMetricBubble(
+                                  icon: trend == 'improving'
                                       ? Icons.trending_up
                                       : trend == 'declining'
                                           ? Icons.trending_down
                                           : Icons.trending_flat,
+                                  label: 'Trend',
+                                  value: trend[0].toUpperCase() + trend.substring(1),
                                   color: trend == 'improving'
                                       ? Colors.green
                                       : trend == 'declining'
                                           ? Colors.orange
                                           : Colors.grey,
-                                  size: 16,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Recovery Trend: ${trend[0].toUpperCase()}${trend.substring(1)}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                              if (streak != null && streak > 0)
+                                _buildMetricBubble(
+                                  icon: Icons.local_fire_department,
+                                  label: 'Streak',
+                                  value: '$streak d',
+                                  color: Colors.orange,
                                 ),
-                              ],
-                            ),
-                          ],
-                          if (streak != null && streak > 0) ...[
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                const Icon(Icons.local_fire_department,
-                                    color: Colors.orange, size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Streak: $streak day${streak > 1 ? "s" : ""}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (successRate != null) ...[
-                            const SizedBox(height: 12),
-                            LinearProgressIndicator(
-                              value: successRate / 100,
-                              backgroundColor: Colors.white,
-                              color: Colors.green.shade400,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Resilience Score: ${successRate.toStringAsFixed(0)}%",
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green.shade700,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -685,14 +755,26 @@ class _JournalScreenState extends State<JournalScreen> {
               ),
               const SizedBox(height: 20),
               // Status Card
-              Card(
-                elevation: 4,
-                shadowColor: _riskLevel == 'High'
-                    ? Colors.red.withOpacity(0.5)
-                    : Colors.black12,
-                color: _riskLevel == 'High'
-                    ? Colors.red.shade50
-                    : Colors.white,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _riskLevel == 'High'
+                        ? const Color(0xFFC16B4B).withOpacity(0.3)
+                        : const Color(0xFFE0D5CC),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _riskLevel == 'High'
+                          ? const Color(0xFFC16B4B).withOpacity(0.08)
+                          : Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -703,31 +785,13 @@ class _JournalScreenState extends State<JournalScreen> {
                         children: [
                           Text(
                             _statusMessage,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[900],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _riskLevel == 'High'
-                                  ? Colors.red
-                                  : Colors.green,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '$_riskLevel Risk',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                          RiskLevelBadge(riskLevel: _riskLevel),
                         ],
                       ),
                       if (_arcLabel != null) ...[

@@ -548,6 +548,115 @@ class BehavioralStateManager:
             "total_cycles": len(entry_counts),
         }
 
+    def save_journal_entry(
+        self,
+        entry_id: str,
+        raw_text: str,
+        detected_state: str,
+        sublabel: str,
+        confidence: float,
+        reasoning: str,
+        risk_level: str,
+        intervention_title: str,
+        intervention_type: str,
+    ) -> bool:
+        """
+        Saves the raw journal text and analysis result as a JournalEntry node.
+        Called from /analyze after AI classification. Non-critical — failure
+        does not block the response.
+        """
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    CREATE (j:JournalEntry {
+                        id: $id,
+                        timestamp: datetime(),
+                        raw_text: $raw_text,
+                        detected_state: $state,
+                        sublabel: $sublabel,
+                        confidence: $confidence,
+                        reasoning: $reasoning,
+                        risk_level: $risk_level,
+                        intervention_title: $title,
+                        intervention_type: $itype
+                    })
+                """,
+                    id=entry_id,
+                    raw_text=raw_text,
+                    state=detected_state,
+                    sublabel=sublabel or "",
+                    confidence=confidence,
+                    reasoning=reasoning,
+                    risk_level=risk_level,
+                    title=intervention_title,
+                    itype=intervention_type or "",
+                )
+            return True
+        except Exception:
+            logger.error("DB save journal entry error", exc_info=True)
+            return False
+
+    def get_journal_entries(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Returns saved journal entries in reverse chronological order.
+        """
+        if not self.is_available:
+            return []
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (j:JournalEntry)
+                    RETURN
+                        j.id as id,
+                        j.timestamp as timestamp,
+                        j.raw_text as raw_text,
+                        j.detected_state as detected_state,
+                        j.sublabel as sublabel,
+                        j.confidence as confidence,
+                        j.reasoning as reasoning,
+                        j.risk_level as risk_level,
+                        j.intervention_title as intervention_title,
+                        j.intervention_type as intervention_type,
+                        j.user_outcome as user_outcome,
+                        j.user_notes as user_notes
+                    ORDER BY j.timestamp DESC
+                    LIMIT $limit
+                """, limit=min(limit, 500))
+                entries = []
+                for record in result:
+                    clean = record.data()
+                    clean["timestamp"] = str(clean["timestamp"]) if clean.get("timestamp") else ""
+                    entries.append(clean)
+                return entries
+        except Exception:
+            logger.error("DB get journal entries error", exc_info=True)
+            return []
+
+    def record_journal_outcome(
+        self,
+        entry_id: str,
+        outcome: str,
+        notes: Optional[str] = None,
+    ) -> bool:
+        """
+        Records the user's self-reported outcome on a journal entry.
+        """
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    MATCH (j:JournalEntry {id: $id})
+                    SET j.user_outcome = $outcome,
+                        j.user_notes = $notes
+                """, id=entry_id, outcome=outcome, notes=notes or "")
+            return True
+        except Exception:
+            logger.error("DB record journal outcome error", exc_info=True)
+            return False
+
 def create_db_manager() -> BehavioralStateManager:
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")

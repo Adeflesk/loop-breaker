@@ -56,30 +56,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: Column(
               children: [
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 child: Row(
                   children: [
-                    _buildStatCard('Entries', totalEntries.toString(), Colors.blue),
+                    _buildStatCard('Entries', totalEntries.toString(), const Color(0xFF5B9B96)),
+                    const SizedBox(width: 12),
                     _buildStatCard(
                       'Loops Broken',
                       loopsBroken.toString(),
-                      Colors.orange,
+                      const Color(0xFFD89E6F),
                     ),
+                    const SizedBox(width: 12),
                     _buildStatCard(
                       'Avg Focus',
                       '${(avgConfidence * 100).toStringAsFixed(0)}%',
-                      Colors.green,
+                      const Color(0xFF8B7355),
                     ),
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Emotional Composition',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
@@ -105,103 +112,178 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
               ),
-              Container(
-                height: 150,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: data
-                            .asMap()
-                            .entries
-                            .map(
-                              (e) => FlSpot(
-                                e.key.toDouble(),
-                                (e.value['confidence'] as num?)?.toDouble() ??
-                                    0.0,
-                              ),
-                            )
-                            .toList(),
-                        isCurved: true,
-                        color: Colors.deepPurple,
-                        barWidth: 3,
-                        dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: Colors.deepPurple.withOpacity(0.1),
-                        ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Container(
+                  height: 150,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
+                  child: LineChart(
+                    LineChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: const FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: data
+                              .asMap()
+                              .entries
+                              .map(
+                                (e) => FlSpot(
+                                  e.key.toDouble(),
+                                  (e.value['confidence'] as num?)?.toDouble() ??
+                                      0.0,
+                                ),
+                              )
+                              .toList(),
+                          isCurved: true,
+                          color: const Color(0xFF5B9B96),
+                          barWidth: 2.5,
+                          dotData: const FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: const Color(0xFF5B9B96).withOpacity(0.08),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Recent Entries',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: data.length,
-                itemBuilder: (context, index) {
-                  final item = data[index];
-                  final bool isLoop = (item['intervention'] != null &&
-                      item['intervention'] != 'None' &&
-                      item['intervention'].toString().isNotEmpty);
-                  final String state = item['state']?.toString() ?? 'Unknown';
-                  final String intervention = item['intervention']?.toString() ?? '';
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: data.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = data[index];
+                    final bool isLoop = (item['intervention'] != null &&
+                        item['intervention'] != 'None' &&
+                        item['intervention'].toString().isNotEmpty);
+                    final String state = item['state']?.toString() ?? 'Unknown';
+                    final String intervention = item['intervention']?.toString() ?? '';
+                    final bool success = item['was_successful'] == true;
 
-                  // Safe time formatting: check if time exists and has sufficient length
-                  String timeStr = '';
-                  if (item['time'] != null) {
-                    final timeString = item['time'].toString();
-                    if (timeString.length >= 16) {
-                      timeStr = timeString.substring(11, 16);
-                    } else {
-                      timeStr = timeString;
+                    String timeStr = '';
+                    if (item['time'] != null) {
+                      final timeString = item['time'].toString();
+                      if (timeString.length >= 16) {
+                        timeStr = timeString.substring(11, 16);
+                      } else {
+                        timeStr = timeString;
+                      }
                     }
-                  }
 
-                  return ListTile(
-                    leading: Icon(
-                      item['was_successful'] == true
-                          ? Icons.verified
-                          : Icons.circle,
-                      color: item['was_successful'] == true
-                          ? Colors.green
-                          : Colors.grey,
-                    ),
-                    title: Text(state),
-                    subtitle: Text(
-                      isLoop
-                          ? 'Intervention: $intervention'
-                          : 'Healthy State',
-                    ),
-                    trailing: Text(timeStr),
-                  );
-                },
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE0D5CC),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: success
+                                ? const Color(0xFF5B9B96).withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              success ? Icons.check_circle : Icons.circle_outlined,
+                              color: success
+                                  ? const Color(0xFF5B9B96)
+                                  : Colors.grey[400],
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          state,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        subtitle: Text(
+                          isLoop
+                              ? 'Intervention: $intervention'
+                              : 'Healthy State',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        trailing: Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               // Loop Path Section
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.only(left: 16, top: 16),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Your Loop Pattern',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
@@ -243,91 +325,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   );
                 },
               ),
-              // Thought Records Section
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Thought Records',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              FutureBuilder<List<dynamic>>(
-                future: ApiClient.fetchThoughtRecords(),
-                builder: (context, thoughtSnapshot) {
-                  if (thoughtSnapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-
-                  final thoughtRecords = thoughtSnapshot.data ?? [];
-                  if (thoughtRecords.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No thought records yet.'),
-                    );
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: thoughtRecords.length,
-                      itemBuilder: (context, index) {
-                        final record = thoughtRecords[index];
-                        final String balancedThought = record['balanced_thought']?.toString() ?? '';
-                        final String linkedNode = record['linked_node']?.toString() ?? 'Unlinked';
-                        final String timeStr = (record['timestamp']?.toString() ?? '').substring(0, 10);
-
-                        return ExpansionTile(
-                          leading: const Icon(Icons.lightbulb_outline, color: Colors.amber),
-                          title: Text(
-                            balancedThought.length > 50
-                                ? '${balancedThought.substring(0, 50)}...'
-                                : balancedThought,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text('$linkedNode · $timeStr'),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildThoughtField('Situation:', record['situation']),
-                                  const SizedBox(height: 12),
-                                  _buildThoughtField('Automatic Thought:', record['automatic_thought']),
-                                  const SizedBox(height: 12),
-                                  _buildThoughtField('Evidence For:', record['evidence_for']),
-                                  const SizedBox(height: 12),
-                                  _buildThoughtField('Evidence Against:', record['evidence_against']),
-                                  const SizedBox(height: 12),
-                                  _buildThoughtField('Balanced Alternative:', record['balanced_thought']),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                },
-              ),
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(24),
                 child: OutlinedButton.icon(
                   onPressed: () => _resetData(context),
-                  icon: const Icon(Icons.delete_sweep, color: Colors.red),
-                  label: const Text(
-                    'Reset Journey Data',
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  icon: const Icon(Icons.delete_sweep),
+                  label: const Text('Reset Journey Data'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
+                    foregroundColor: const Color(0xFFC16B4B),
+                    side: const BorderSide(
+                      color: Color(0xFFC16B4B),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
@@ -339,43 +355,57 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildThoughtField(String label, dynamic value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value?.toString() ?? '',
-          style: const TextStyle(fontSize: 13),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatCard(String label, String value, Color color) {
+    const Color primaryTeal = Color(0xFF5B9B96);
+    const Color accentWarm = Color(0xFFD89E6F);
+
     return Expanded(
-      child: Card(
-        elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withOpacity(0.15),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
           child: Column(
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                    letterSpacing: -0.5,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -385,26 +415,82 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildTrendChart(Map<String, double> data) {
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 4,
-          centerSpaceRadius: 40,
-          sections: data.entries.map((entry) {
-            return PieChartSectionData(
-              color: _getColorForState(entry.key),
-              value: entry.value,
-              title: '${entry.value.toInt()}',
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 45,
+                  sections: data.entries.map((entry) {
+                    return PieChartSectionData(
+                      color: _getColorForState(entry.key),
+                      value: entry.value,
+                      title: '${entry.value.toInt()}',
+                      radius: 60,
+                      titleStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 2,
+                            color: Colors.black26,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-            );
-          }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: data.entries.map((entry) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _getColorForState(entry.key),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      entry.key,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
     );
@@ -413,15 +499,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Color _getColorForState(String state) {
     switch (state) {
       case 'Stress':
-        return Colors.redAccent;
+        return const Color(0xFFC16B4B);  // Warm terracotta red
       case 'Anxiety':
-        return Colors.orangeAccent;
+        return const Color(0xFFD89E6F);  // Clay orange
       case 'Procrastination':
-        return Colors.purpleAccent;
+        return const Color(0xFF8B7355);  // Warm brown
       case 'Shame':
-        return Colors.blueGrey;
+        return const Color(0xFF5B9B96);  // Sage teal
       default:
-        return Colors.blueAccent;
+        return const Color(0xFF6B9A92);  // Muted teal
     }
   }
 

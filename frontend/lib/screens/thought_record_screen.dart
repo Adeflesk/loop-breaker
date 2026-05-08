@@ -137,6 +137,7 @@ class _ThoughtRecordScreenState extends State<ThoughtRecordScreen> {
             TextField(
               controller: _evidenceForController,
               maxLines: 3,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Evidence for...',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -153,6 +154,7 @@ class _ThoughtRecordScreenState extends State<ThoughtRecordScreen> {
             TextField(
               controller: _evidenceAgainstController,
               maxLines: 3,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Evidence against...',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -197,6 +199,7 @@ class _ThoughtRecordScreenState extends State<ThoughtRecordScreen> {
         TextField(
           controller: controller,
           maxLines: 4,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: hint,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

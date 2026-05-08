@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 
 try:
     import sentry_sdk
@@ -23,6 +23,8 @@ from .models import (
     AnalysisResponse,
     FeedbackRequest,
     InsightResponse,
+    JournalEntryResponse,
+    JournalOutcomeRequest,
     ThoughtRecordRequest,
     ThoughtRecordResponse,
 )
@@ -255,7 +257,25 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         # Fallback for old-style single-string education
         education_text = breaker.get("education", "")
 
-    # 7. Return the full payload to Flutter
+    # 7. Save journal entry for persistence and outcome tracking
+    entry_id = str(uuid.uuid4())
+    try:
+        db.save_journal_entry(
+            entry_id=entry_id,
+            raw_text=body.user_text,
+            detected_state=node,
+            sublabel=sublabel or "",
+            confidence=prediction["confidence"],
+            reasoning=prediction["reasoning"],
+            risk_level=risk,
+            intervention_title=breaker["title"],
+            intervention_type=breaker.get("type", ""),
+        )
+    except Exception:
+        logger.error("Journal entry save failed", exc_info=True, extra={"request_id": request_id})
+        # Non-critical; do not propagate
+
+    # 8. Return the full payload to Flutter
     response_data = {
         "detected_node": node,
         "sublabel": sublabel,
@@ -274,6 +294,7 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "intervention_variants": variants,
         "msc_steps": msc_steps,
         "shame_safety_alert": shame_safety_alert,
+        "journal_entry_id": entry_id,
     }
 
     # After return, increment seen_count (non-blocking)
@@ -339,6 +360,67 @@ async def receive_feedback(body: FeedbackRequest, request: Request, db: Behavior
     except Exception:
         logger.error("Feedback recording failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Feedback service temporarily unavailable")
+
+
+@app.get("/journal-entries", response_model=List[JournalEntryResponse])
+async def get_journal_entries(
+    limit: int = Query(50, ge=1, le=500),
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    """
+    Returns saved journal entries in reverse chronological order.
+
+    Query params:
+    - limit: Max entries to return (1-500, default 50)
+
+    Response: List of JournalEntry objects with raw text, analysis, and outcomes
+    """
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_journal_entries(limit=limit)
+    except Exception:
+        logger.error("Journal entries fetch failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Journal unavailable")
+
+
+@app.patch("/journal-entries/{entry_id}/outcome", status_code=200)
+async def record_journal_outcome(
+    entry_id: str,
+    body: JournalOutcomeRequest,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    """
+    Records the user's self-reported outcome on a journal entry.
+
+    Path params:
+    - entry_id: UUID of the journal entry
+
+    Request body:
+    {
+      "outcome": "helped" | "didn't help" | "neutral",
+      "notes": "optional user notes"
+    }
+
+    Response: {"status": "recorded"}
+    """
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    if body.outcome not in ("helped", "didn't help", "neutral"):
+        raise HTTPException(
+            status_code=422,
+            detail="outcome must be 'helped', 'didn't help', or 'neutral'"
+        )
+    try:
+        success = db.record_journal_outcome(entry_id=entry_id, outcome=body.outcome, notes=body.notes)
+        if not success:
+            raise HTTPException(status_code=503, detail="Journal outcome service unavailable")
+        return {"status": "recorded"}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Journal outcome failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Journal outcome service unavailable")
 
 
 @app.get("/stats")
