@@ -38,19 +38,60 @@ class _JournalHistoryScreenState extends State<JournalHistoryScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final entries = snapshot.data ?? [];
-          if (entries.isEmpty) {
+          if (snapshot.hasError) {
             return const Center(
-              child: Text('No entries yet. Start journaling!'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off_outlined, size: 48, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('Could not load entries. Pull to refresh.',
+                      textAlign: TextAlign.center),
+                ],
+              ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: entries.length,
-            itemBuilder: (context, index) => _EntryCard(
-              entry: entries[index],
-              onOutcomeRecorded: _refresh,
+          final entries = snapshot.data ?? [];
+          if (entries.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.book_outlined, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No journal entries yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your entries will appear here after journaling',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _entriesFuture = ApiClient.fetchJournalEntries();
+              });
+              await _entriesFuture;
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: entries.length,
+              itemBuilder: (context, index) => _EntryCard(
+                entry: entries[index],
+                onOutcomeRecorded: _refresh,
+              ),
             ),
           );
         },
@@ -82,14 +123,15 @@ class _EntryCardState extends State<_EntryCard> {
   }
 
   Future<void> _recordOutcome(String outcome) async {
+    final previousOutcome = _currentOutcome;
+    setState(() {
+      _currentOutcome = outcome;
+    });
     try {
       await ApiClient.recordJournalOutcome(
         widget.entry['id'] as String,
         outcome,
       );
-      setState(() {
-        _currentOutcome = outcome;
-      });
       widget.onOutcomeRecorded();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,6 +143,16 @@ class _EntryCardState extends State<_EntryCard> {
       }
     } catch (e) {
       debugPrint('Error recording outcome: $e');
+      setState(() {
+        _currentOutcome = previousOutcome;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save outcome. Please try again.'),
+          ),
+        );
+      }
     }
   }
 

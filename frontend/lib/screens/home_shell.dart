@@ -25,7 +25,10 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (int index) {
@@ -35,19 +38,19 @@ class _HomeShellState extends State<HomeShell> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.edit_note),
+            icon: Icon(Icons.edit_note_outlined),
             selectedIcon: Icon(Icons.edit_note),
             label: 'Journal',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: 'History',
           ),
           NavigationDestination(
-            icon: Icon(Icons.lightbulb_outline),
-            selectedIcon: Icon(Icons.lightbulb),
-            label: 'Thought Records',
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist),
+            label: 'Exercises',
           ),
           NavigationDestination(
             icon: Icon(Icons.book_outlined),

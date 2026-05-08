@@ -39,6 +39,20 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (snapshot.hasError) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off_outlined, size: 48, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('Could not load exercises. Pull to refresh.',
+                      textAlign: TextAlign.center),
+                ],
+              ),
+            );
+          }
+
           final records = snapshot.data ?? [];
 
           if (records.isEmpty) {
@@ -93,10 +107,17 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: records.length + 1,
-            itemBuilder: (context, index) {
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _recordsFuture = ApiClient.fetchThoughtRecords();
+              });
+              await _recordsFuture;
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              itemCount: records.length + 1,
+              itemBuilder: (context, index) {
               if (index == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -219,7 +240,8 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
                   ],
                 ),
               );
-            },
+              },
+            ),
           );
         },
       ),

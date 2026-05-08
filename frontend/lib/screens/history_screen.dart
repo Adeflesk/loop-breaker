@@ -37,8 +37,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return _buildErrorState('Could not load your journey. Pull to refresh.');
+          }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No data yet.'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_graph_outlined, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No entries yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Journal your first entry to see your dashboard',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            );
           }
 
           final data = snapshot.data!;
@@ -53,10 +77,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   data.length
               : 0.0;
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-              Padding(
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _historyFuture = ApiClient.fetchHistory(useCache: false);
+              });
+              await _historyFuture;
+            },
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 child: Row(
                   children: [
@@ -185,10 +216,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   itemBuilder: (context, index) {
                     return ExpandableHistoryEntry(
                       item: data[index],
-                      onExpanded: () {
-                        // Haptic feedback on expand (optional)
-                        // HapticFeedback.lightImpact();
-                      },
+                      onExpanded: () {},
                     );
                   },
                 ),
@@ -271,6 +299,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               ],
+              ),
             ),
           );
         },
@@ -459,16 +488,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (confirm == true) {
       try {
         final success = await ApiClient.resetData();
-        if (success) {
-          _refreshHistory();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Database Wiped')),
-          );
+        if (context.mounted) {
+          if (success) {
+            _refreshHistory();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Database Wiped')),
+            );
+          }
         }
       } catch (e) {
         debugPrint('Reset error: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reset failed. Please try again.')),
+          );
+        }
       }
     }
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off_outlined, size: 48, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
   }
 }
 
