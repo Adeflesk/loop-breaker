@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
+import '../widgets/expandable_history_entry.dart';
 import '../widgets/loop_path_chart.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -177,95 +178,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ListView.separated(
+                child: ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: data.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    final item = data[index];
-                    final bool isLoop = (item['intervention'] != null &&
-                        item['intervention'] != 'None' &&
-                        item['intervention'].toString().isNotEmpty);
-                    final String state = item['state']?.toString() ?? 'Unknown';
-                    final String intervention = item['intervention']?.toString() ?? '';
-                    final bool success = item['was_successful'] == true;
-
-                    String timeStr = '';
-                    if (item['time'] != null) {
-                      final timeString = item['time'].toString();
-                      if (timeString.length >= 16) {
-                        timeStr = timeString.substring(11, 16);
-                      } else {
-                        timeStr = timeString;
-                      }
-                    }
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFE0D5CC),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: success
-                                ? const Color(0xFF5B9B96).withOpacity(0.1)
-                                : Colors.grey.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              success ? Icons.check_circle : Icons.circle_outlined,
-                              color: success
-                                  ? const Color(0xFF5B9B96)
-                                  : Colors.grey[400],
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          state,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                        subtitle: Text(
-                          isLoop
-                              ? 'Intervention: $intervention'
-                              : 'Healthy State',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        trailing: Text(
-                          timeStr,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                    return ExpandableHistoryEntry(
+                      item: data[index],
+                      onExpanded: () {
+                        // Haptic feedback on expand (optional)
+                        // HapticFeedback.lightImpact();
+                      },
                     );
                   },
                 ),
@@ -356,9 +279,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildStatCard(String label, String value, Color color) {
-    const Color primaryTeal = Color(0xFF5B9B96);
-    const Color accentWarm = Color(0xFFD89E6F);
-
     return Expanded(
       child: Container(
         decoration: BoxDecoration(

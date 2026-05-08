@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_shell.dart';
+import 'screens/onboarding_modal.dart';
 
 void main() {
   runApp(const LoopBreakerApp());
@@ -101,7 +102,34 @@ class LoopBreakerApp extends StatelessWidget {
           space: 24,
         ),
       ),
-      home: const HomeShell(),
+      home: const AppHome(),
     );
+  }
+}
+
+class AppHome extends StatefulWidget {
+  const AppHome({super.key});
+
+  @override
+  State<AppHome> createState() => _AppHomeState();
+}
+
+class _AppHomeState extends State<AppHome> {
+  bool _hasSeenOnboarding = false;
+
+  void _completeOnboarding() {
+    setState(() {
+      _hasSeenOnboarding = true;
+    });
+    // In a real app, you'd store this in SharedPreferences:
+    // await prefs.setBool('has_seen_onboarding', true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasSeenOnboarding) {
+      return OnboardingModal(onComplete: _completeOnboarding);
+    }
+    return const HomeShell();
   }
 }
