@@ -70,6 +70,7 @@ ALLOWED_ORIGINS = os.getenv(
 FEATURE_SUBLABEL_ROUTING = os.getenv("FEATURE_SUBLABEL_ROUTING", "true").lower() == "true"
 FEATURE_THOUGHT_RECORDS = os.getenv("FEATURE_THOUGHT_RECORDS", "false").lower() == "true"
 FEATURE_SHAME_PROTOCOL = os.getenv("FEATURE_SHAME_PROTOCOL", "false").lower() == "true"
+FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -132,6 +133,7 @@ def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
         "Numbness": (7, "Numbness — Low Self-Esteem"),
         "Shame": (8, "Shame — Loop Restart"),
         "Isolation": (8, "Isolation — Shame Context"),
+        "Restlessness": (6, "Restlessness — Trapped Activation"),
     }
 
     base_pos, base_label = ARC_MAPPING.get(node, (1, "Unknown Node"))
@@ -201,6 +203,27 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         logger.error("DB log failed in /analyze", exc_info=True, extra={"request_id": request_id})
         risk, is_loop = "Low", False
 
+    # 3b. Fetch personal context (non-blocking)
+    personal_loop = None
+    intervention_effectiveness = None
+
+    try:
+        loop_data = db.analyze_loop_path(days=30)
+        if loop_data:
+            personal_loop = loop_data
+    except Exception as e:
+        logger.warning(f"Failed to fetch loop pattern: {e}")
+
+    try:
+        effectiveness_data = db.get_intervention_effectiveness(
+            state=node,
+            sublabel=sublabel
+        )
+        if effectiveness_data:
+            intervention_effectiveness = effectiveness_data
+    except Exception as e:
+        logger.warning(f"Failed to fetch intervention effectiveness: {e}")
+
     # 4. Compute arc position (8-node loop positioning)
     arc_pos, arc_label = compute_arc_position(node, sublabel)
 
@@ -257,6 +280,16 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         # Fallback for old-style single-string education
         education_text = breaker.get("education", "")
 
+    # 6c. Extract movement protocol if feature flag enabled
+    movement_protocol = None
+    if FEATURE_MOVEMENT_PROTOCOLS:
+        state_catalog = INTERVENTIONS.get(node, {})
+        # Sublabel-variant states store interventions under sublabel keys
+        if isinstance(state_catalog.get(sublabel), dict) and "movement" in state_catalog.get(sublabel, {}):
+            movement_protocol = state_catalog[sublabel]["movement"]
+        elif "movement" in state_catalog:
+            movement_protocol = state_catalog["movement"]
+
     # 7. Save journal entry for persistence and outcome tracking
     entry_id = str(uuid.uuid4())
     try:
@@ -294,7 +327,10 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "intervention_variants": variants,
         "msc_steps": msc_steps,
         "shame_safety_alert": shame_safety_alert,
+        "movement_protocol": movement_protocol,
         "journal_entry_id": entry_id,
+        "personal_loop": personal_loop,
+        "intervention_effectiveness": intervention_effectiveness,
     }
 
     # After return, increment seen_count (non-blocking)
