@@ -219,6 +219,13 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
+  Color _getPercentageColor(int percentage) {
+    if (percentage >= 75) return const Color(0xFF4CAF50); // Green
+    if (percentage >= 50) return const Color(0xFFFFC107); // Amber
+    if (percentage >= 25) return const Color(0xFFFF9800); // Orange
+    return const Color(0xFFF44336); // Red
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -477,6 +484,110 @@ class _JournalScreenState extends State<JournalScreen> {
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (data['intervention_effectiveness'] != null &&
+                      (data['intervention_effectiveness'] as Map<String, dynamic>).isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Effectiveness Track Record',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...(data['intervention_effectiveness'] as Map<String, dynamic>)
+                              .entries
+                              .map((entry) {
+                            final interventionName = entry.key;
+                            final stats = entry.value as Map<String, dynamic>;
+                            final percentage = stats['percentage'] ?? 0;
+                            final total = stats['total'] ?? 0;
+                            final helped = stats['helped'] ?? 0;
+                            final neutral = stats['neutral'] ?? 0;
+                            final didNotHelp = stats['didn_help'] ?? 0;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          interventionName,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getPercentageColor(percentage),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '$percentage%',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: percentage / 100,
+                                            minHeight: 6,
+                                            backgroundColor: Colors.grey[200],
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _getPercentageColor(percentage),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '$helped helped • $neutral neutral • $didNotHelp didn\'t help (n=$total)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
                         ],
                       ),
                     ),
