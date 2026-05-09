@@ -87,6 +87,39 @@ class _FakeDBManager:
         if was_successful:
             self.node_history = []
 
+    def analyze_loop_path(self, days: int = 30):
+        """Return mock personal loop context."""
+        return {
+            "most_common_entry": "Stress",
+            "cycle_length_hours": 4.5,
+            "total_cycles": 12
+        }
+
+    def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+        """Return mock intervention effectiveness data."""
+        if state == "Stress":
+            return {
+                "5-Minute Sprint": {
+                    "helped": 8,
+                    "neutral": 1,
+                    "didn_help": 1,
+                    "total": 10,
+                    "percentage": 80
+                },
+                "Breathing": {
+                    "helped": 2,
+                    "neutral": 1,
+                    "didn_help": 2,
+                    "total": 5,
+                    "percentage": 40
+                }
+            }
+        return {}
+
+    def increment_intervention_seen_count(self, title: str):
+        """Mock increment (no-op)."""
+        pass
+
     def get_ai_insight(self):
         return self.insight_data
 
@@ -440,3 +473,159 @@ def test_feedback_when_db_unavailable(client: TestClient):
         assert response.status_code == 200
     finally:
         del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_analyze_returns_personal_loop(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Test that /analyze includes personal_loop field when available."""
+    response = client.post("/analyze", json={"user_text": "I feel stressed"})
+    assert response.status_code == 200
+    body = response.json()
+
+    # Should have personal_loop field
+    assert "personal_loop" in body
+    assert body["personal_loop"] is not None
+
+    # Verify structure
+    assert body["personal_loop"]["most_common_entry"] == "Stress"
+    assert body["personal_loop"]["cycle_length_hours"] == 4.5
+
+
+def test_analyze_returns_intervention_effectiveness(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Test that /analyze includes intervention_effectiveness field."""
+    response = client.post("/analyze", json={"user_text": "I feel stressed"})
+    assert response.status_code == 200
+    body = response.json()
+
+    # Should have intervention_effectiveness field
+    assert "intervention_effectiveness" in body
+    assert body["intervention_effectiveness"] is not None
+
+    # Verify structure
+    assert isinstance(body["intervention_effectiveness"], dict)
+    assert "5-Minute Sprint" in body["intervention_effectiveness"]
+
+    # Verify intervention stats structure
+    stats = body["intervention_effectiveness"]["5-Minute Sprint"]
+    assert stats["helped"] == 8
+    assert stats["neutral"] == 1
+    assert stats["didn_help"] == 1
+    assert stats["total"] == 10
+    assert stats["percentage"] == 80
+
+
+def test_analyze_personal_loop_none_when_db_fails(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    """Test that personal_loop is None if DB call fails."""
+    class FailingDBManager:
+        def log_and_analyze(self, *args, **kwargs):
+            return ("Low", False)
+
+        def analyze_loop_path(self, days: int = 30):
+            raise Exception("DB connection failed")
+
+        def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+            return {}
+
+        def cleanup_stale_interventions(self, *args, **kwargs):
+            pass
+
+        def resolve_intervention(self, *args, **kwargs):
+            pass
+
+        def increment_intervention_seen_count(self, title: str):
+            pass
+
+        def save_journal_entry(self, *args, **kwargs):
+            pass
+
+        def get_shame_count_24h(self):
+            return 0
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: FailingDBManager()
+    try:
+        async def ai_response(_text: str, request_id: str = "") -> Dict[str, Any]:
+            return {
+                "detected_node": "Stress",
+                "emotion_sublabel": "Anxious",
+                "confidence": 0.8,
+                "reasoning": "test",
+            }
+
+        monkeypatch.setattr(app_main, "query_local_ai", ai_response)
+
+        response = client.post("/analyze", json={"user_text": "test"})
+        assert response.status_code == 200
+        body = response.json()
+
+        # personal_loop should be None when DB fails
+        assert body["personal_loop"] is None
+        # effectiveness should be empty dict (since get_intervention_effectiveness returns {})
+        assert body["intervention_effectiveness"] is None
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_analyze_effectiveness_none_when_db_fails(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    """Test that intervention_effectiveness is None if DB call fails."""
+    class FailingDBManager:
+        def log_and_analyze(self, *args, **kwargs):
+            return ("Low", False)
+
+        def analyze_loop_path(self, days: int = 30):
+            return {"most_common_entry": "Stress"}
+
+        def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+            raise Exception("DB connection failed")
+
+        def cleanup_stale_interventions(self, *args, **kwargs):
+            pass
+
+        def resolve_intervention(self, *args, **kwargs):
+            pass
+
+        def increment_intervention_seen_count(self, title: str):
+            pass
+
+        def save_journal_entry(self, *args, **kwargs):
+            pass
+
+        def get_shame_count_24h(self):
+            return 0
+
+    app_main.app.dependency_overrides[app_main.get_db] = lambda: FailingDBManager()
+    try:
+        async def ai_response(_text: str, request_id: str = "") -> Dict[str, Any]:
+            return {
+                "detected_node": "Stress",
+                "emotion_sublabel": "Anxious",
+                "confidence": 0.8,
+                "reasoning": "test",
+            }
+
+        monkeypatch.setattr(app_main, "query_local_ai", ai_response)
+
+        response = client.post("/analyze", json={"user_text": "test"})
+        assert response.status_code == 200
+        body = response.json()
+
+        # intervention_effectiveness should be None when DB fails
+        assert body["intervention_effectiveness"] is None
+        # personal_loop should still be available
+        assert body["personal_loop"] is not None
+    finally:
+        del app_main.app.dependency_overrides[app_main.get_db]
+
+
+def test_analyze_personalization_fields_optional(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Test that personalization fields are truly optional in response."""
+    response = client.post("/analyze", json={"user_text": "I feel stressed"})
+    assert response.status_code == 200
+    body = response.json()
+
+    # Both fields should exist (even if None)
+    assert "personal_loop" in body
+    assert "intervention_effectiveness" in body
+
+    # And should be valid to parse as AnalysisResponse
+    # (This just means the response follows the schema)
+    assert "detected_node" in body
+    assert "intervention_title" in body
