@@ -548,6 +548,108 @@ class BehavioralStateManager:
             "total_cycles": len(entry_counts),
         }
 
+    def get_intervention_effectiveness(
+        self,
+        state: str,
+        sublabel: Optional[str] = None,
+        limit: int = 10,
+        min_threshold: int = 3
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Calculate intervention effectiveness for a specific state+sublabel.
+
+        Args:
+            state: Detected emotional state (e.g., "Procrastination")
+            sublabel: Sublabel variant (e.g., "Avoidance")
+            limit: Look at last N entries for this state+sublabel (default 10)
+            min_threshold: Only include interventions used 3+ times (default)
+
+        Returns:
+            {
+                "5-Minute Sprint": {
+                    "helped": 8,
+                    "neutral": 1,
+                    "didn_help": 1,
+                    "total": 10,
+                    "percentage": 80
+                },
+                "Breathing": {
+                    "helped": 2,
+                    "neutral": 0,
+                    "didn_help": 3,
+                    "total": 5,
+                    "percentage": 40
+                }
+            }
+
+        Notes:
+        - Only counts entries where user_outcome is not null
+        - Excludes interventions with < min_threshold uses
+        - Returns empty dict if no data
+        - Gracefully handles Neo4j unavailability
+        """
+        if not self.is_available:
+            return {}
+
+        try:
+            with self.driver.session() as session:
+                # Query journal entries for this state+sublabel with recorded outcomes
+                where_clause = "WHERE j.detected_state = $state AND j.user_outcome IS NOT NULL"
+                params = {"state": state, "limit": limit}
+
+                if sublabel:
+                    where_clause += " AND j.sublabel = $sublabel"
+                    params["sublabel"] = sublabel
+
+                result = session.run(f"""
+                    MATCH (j:JournalEntry)
+                    {where_clause}
+                    RETURN
+                        j.intervention_title as intervention_title,
+                        j.user_outcome as user_outcome
+                    ORDER BY j.timestamp DESC
+                    LIMIT $limit
+                """, params)
+
+                # Aggregate outcomes by intervention
+                intervention_stats = {}
+                for record in result:
+                    intervention = record["intervention_title"]
+                    outcome = record["user_outcome"]
+
+                    if intervention not in intervention_stats:
+                        intervention_stats[intervention] = {
+                            "helped": 0,
+                            "neutral": 0,
+                            "didn_help": 0,
+                            "total": 0
+                        }
+
+                    # Normalize outcome values
+                    if outcome in ["helped", "didn't help", "neutral"]:
+                        # Map "didn't help" to "didn_help" for consistency
+                        outcome_key = "didn_help" if outcome == "didn't help" else outcome
+                        intervention_stats[intervention][outcome_key] += 1
+                        intervention_stats[intervention]["total"] += 1
+
+                # Filter by min_threshold and calculate percentages
+                result_dict = {}
+                for intervention, stats in intervention_stats.items():
+                    if stats["total"] >= min_threshold:
+                        percentage = round(100 * stats["helped"] / stats["total"])
+                        result_dict[intervention] = {
+                            "helped": stats["helped"],
+                            "neutral": stats["neutral"],
+                            "didn_help": stats["didn_help"],
+                            "total": stats["total"],
+                            "percentage": percentage
+                        }
+
+                return result_dict
+        except Exception:
+            logger.error("DB get intervention effectiveness error", exc_info=True)
+            return {}
+
     def save_journal_entry(
         self,
         entry_id: str,
