@@ -303,119 +303,257 @@ class _JournalScreenState extends State<JournalScreen> {
     final String title = data['intervention_title'] ?? 'Pattern Break';
     final String task = data['intervention_task'] ?? 'Take a moment to breathe.';
     final String education = data['education_info'] ?? '';
-
-    final bool isBreathing = title.contains('Sigh') || title.contains('Breathing');
-    final bool isWater = title.contains('Bio-Sync') || title.contains('Needs');
+    final movementProtocol = data['movement_protocol'] as Map?;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                isBreathing
-                    ? Icons.air
-                    : (isWater ? Icons.water_drop : Icons.psychology),
-                color: const Color(0xFF5B9B96),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isShowingMovement = data['_showing_movement'] as bool? ?? false;
+            final String displayTitle = isShowingMovement
+                ? (movementProtocol?['title'] as String? ?? title)
+                : title;
+            final String displayTask = isShowingMovement
+                ? (movementProtocol?['task'] as String? ?? task)
+                : task;
+            final String displayEducation = isShowingMovement
+                ? (movementProtocol?['education']?['introduce'] as String? ??
+                    movementProtocol?['education'] as String? ??
+                    '')
+                : education;
+
+            final bool isBreathing = displayTitle.contains('Sigh') || displayTitle.contains('Breathing');
+            final bool isWater = displayTitle.contains('Bio-Sync') || displayTitle.contains('Needs');
+            final bool isMovement = displayTitle.contains('Walk') || displayTitle.contains('Discharge') || displayTitle.contains('Break') || displayTitle.contains('Shake');
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+              title: Row(
+                children: [
+                  Icon(
+                    isMovement
+                        ? Icons.directions_walk
+                        : (isBreathing
+                            ? Icons.air
+                            : (isWater ? Icons.water_drop : Icons.psychology)),
+                    color: const Color(0xFF5B9B96),
                   ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                task,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, height: 1.4),
-              ),
-              const SizedBox(height: 25),
-              if (isBreathing) const BreathingCircle(),
-              if (education.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                ExpansionTile(
-                  title: const Text(
-                    'Why this works (neuroscience)',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF5B9B96),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      displayTitle,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Text(
-                        education,
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayTask,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16, height: 1.4),
+                  ),
+                  const SizedBox(height: 25),
+                  if (isBreathing) const BreathingCircle(),
+                  if (displayEducation.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ExpansionTile(
+                      title: const Text(
+                        'Why this works (neuroscience)',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                          height: 1.6,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF5B9B96),
                         ),
+                      ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            displayEducation,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (data['personal_loop'] != null &&
+                      data['personal_loop']['most_common_entry'] != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Loop Pattern',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Most Common State',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600]),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      data['personal_loop']
+                                              ['most_common_entry'] ??
+                                          'Unknown',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Cycle Length',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600]),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${data['personal_loop']['cycle_length_hours']?.toStringAsFixed(1) ?? 'N/A'} hours',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (data['personal_loop']['where_in_cycle'] !=
+                              null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              'Position in Cycle',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              data['personal_loop']['where_in_cycle'],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            if (data['intervention_type'] == 'cognitive')
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ThoughtRecordScreen(
-                        prefilledNode: data['detected_node'] as String?,
+                  if (movementProtocol != null) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setDialogState(() {
+                          data['_showing_movement'] =
+                              !(data['_showing_movement'] as bool? ?? false);
+                          if (data['_showing_movement'] == true) {
+                            data['chosen_variant'] = movementProtocol['title'];
+                          } else {
+                            data.remove('chosen_variant');
+                          }
+                        });
+                      },
+                      icon: const Icon(Icons.directions_walk, size: 16),
+                      label: Text(
+                        isShowingMovement
+                            ? 'Switch back to $title'
+                            : 'Try movement: ${movementProtocol['title']}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF5B9B96),
                       ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.lightbulb_outline),
-                label: const Text('Dig deeper →'),
+                  ],
+                ],
               ),
-            TextButton(
-              onPressed: () {
-                final chosenVariant = data['chosen_variant'] as String?;
-                _sendFeedback(false, chosenVariant: chosenVariant, outcome: "didn't help");
-                Navigator.pop(context);
-              },
-              child: Text(
-                "Didn't help",
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final chosenVariant = data['chosen_variant'] as String?;
-                _sendFeedback(true, chosenVariant: chosenVariant, outcome: 'helped');
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Loop Broken! Proud of you.'),
-                    backgroundColor: Color(0xFF5B9B96),
+              actions: [
+                if (data['intervention_type'] == 'cognitive')
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ThoughtRecordScreen(
+                            prefilledNode: data['detected_node'] as String?,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.lightbulb_outline),
+                    label: const Text('Dig deeper →'),
                   ),
-                );
-              },
-              child: const Text('I feel better / Action Completed'),
-            ),
-          ],
+                TextButton(
+                  onPressed: () {
+                    final chosenVariant = data['chosen_variant'] as String?;
+                    _sendFeedback(false, chosenVariant: chosenVariant, outcome: "didn't help");
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    "Didn't help",
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final chosenVariant = data['chosen_variant'] as String?;
+                    _sendFeedback(true, chosenVariant: chosenVariant, outcome: 'helped');
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Loop Broken! Proud of you.'),
+                        backgroundColor: Color(0xFF5B9B96),
+                      ),
+                    );
+                  },
+                  child: const Text('I feel better / Action Completed'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
