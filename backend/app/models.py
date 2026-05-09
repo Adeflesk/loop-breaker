@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 class AnalysisRequest(BaseModel):
     user_text: str = Field(..., min_length=1, max_length=5000)
@@ -65,7 +65,10 @@ class AnalysisResponse(BaseModel):
     intervention_variants: Optional[List[InterventionOption]] = None  # Alternative approaches for this state/sublabel
     msc_steps: Optional[List[MscStep]] = None  # Mindful Self-Compassion steps for Shame interventions
     shame_safety_alert: Optional[bool] = None  # True if Shame detected 3+ times in 24 hours
+    movement_protocol: Optional[Dict[str, Any]] = None  # Movement-based intervention variant (when flag enabled)
     journal_entry_id: Optional[str] = None  # UUID of saved journal entry, for outcome tracking
+    personal_loop: Optional[PersonalLoopContext] = None
+    intervention_effectiveness: Optional[Dict[str, InterventionStats]] = None
 
 class InsightResponse(BaseModel):
     """For the Dashboard summary card."""
@@ -76,6 +79,22 @@ class InsightResponse(BaseModel):
     streak: Optional[int] = None
     missing_need: Optional[str] = None
     trigger_count: Optional[int] = None
+
+
+class PersonalLoopContext(BaseModel):
+    """User's personal behavioral loop pattern."""
+    most_common_entry: Optional[str] = None  # e.g., "Stress"
+    cycle_length_hours: Optional[float] = None  # e.g., 4.5
+    where_in_cycle: Optional[str] = None  # e.g., "procrastination_phase"
+
+
+class InterventionStats(BaseModel):
+    """Effectiveness stats for a single intervention."""
+    helped: int
+    neutral: int
+    didn_help: int
+    total: int
+    percentage: int  # 0-100
 
 
 class JournalEntryResponse(BaseModel):
