@@ -63,6 +63,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'I feel stressed about my work');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -117,6 +118,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'I feel anxious');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -172,6 +174,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed at work');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -227,6 +230,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -296,6 +300,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Work stress');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -359,6 +364,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -428,6 +434,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Anxious');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -487,6 +494,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -538,6 +546,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Calm');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -589,6 +598,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Happy');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -645,10 +655,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
         expect(find.text('Why this works (neuroscience)'), findsOneWidget);
+
+        // Expand the ExpansionTile to reveal the education_info text
+        await tester.tap(find.text('Why this works (neuroscience)'));
+        await tester.pump(const Duration(milliseconds: 500));
+
         expect(find.text(educationText), findsOneWidget);
       });
 
@@ -697,6 +713,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Neutral');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -751,6 +768,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Anxious');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -807,6 +825,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Work stress');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -868,6 +887,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Stressed');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
@@ -933,6 +953,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         await tester.enterText(find.byType(TextField), 'Work stress');
+        await tester.ensureVisible(find.text('Analyze State'));
         await tester.tap(find.text('Analyze State'));
         await tester.pump(const Duration(seconds: 1));
 
