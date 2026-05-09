@@ -280,7 +280,35 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         # Fallback for old-style single-string education
         education_text = breaker.get("education", "")
 
-    # 6c. Extract movement protocol if feature flag enabled
+    # 6c. Personalize education_info with user loop and effectiveness data
+    if education_text:
+        if education_depth == "introduce" and personal_loop and personal_loop.get("most_common_entry"):
+            most_common = personal_loop["most_common_entry"]
+            # Add context about their specific loop pattern
+            if education_text:
+                education_text = f"For YOUR {most_common} pattern, {education_text[0].lower()}{education_text[1:]}"
+
+        elif education_depth == "reinforce" and personal_loop and personal_loop.get("most_common_entry"):
+            most_common = personal_loop["most_common_entry"]
+            # Add effectiveness reference if available
+            if intervention_effectiveness and breaker.get("title") in intervention_effectiveness:
+                stats = intervention_effectiveness[breaker["title"]]
+                percentage = stats.get("percentage", 0)
+                education_text = f"{education_text}\n\nFor you, {breaker['title']} works {percentage}% of the time based on your history."
+            else:
+                education_text = f"{education_text}\n\nThis is particularly important for your {most_common} pattern."
+
+        elif education_depth == "deepen" and personal_loop and personal_loop.get("most_common_entry"):
+            most_common = personal_loop["most_common_entry"]
+            # Add both context and effectiveness for deeper dives
+            context_text = f"In your {most_common} cycle, {education_text[0].lower()}{education_text[1:]}" if education_text else ""
+            if intervention_effectiveness and breaker.get("title") in intervention_effectiveness:
+                stats = intervention_effectiveness[breaker["title"]]
+                percentage = stats.get("percentage", 0)
+                context_text += f"\n\nYour track record shows this works {percentage}% of the time, making it a proven strategy for your pattern."
+            education_text = context_text
+
+    # 6d. Extract movement protocol if feature flag enabled
     movement_protocol = None
     if FEATURE_MOVEMENT_PROTOCOLS:
         state_catalog = INTERVENTIONS.get(node, {})
