@@ -306,7 +306,7 @@ void main() {
 
         expect(find.text('Effectiveness Track Record'), findsOneWidget);
         expect(find.text('5-Minute Sprint'), findsOneWidget);
-        expect(find.text('Breathing'), findsOneWidget);
+        expect(find.text('Breathing'), findsWidgets);  // Found in both title and effectiveness card
         expect(find.text('80%'), findsOneWidget);
         expect(find.text('40%'), findsOneWidget);
       });
