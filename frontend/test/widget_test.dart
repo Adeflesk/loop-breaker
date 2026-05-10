@@ -12,9 +12,14 @@ void main() {
   testWidgets('LoopBreakerApp shows journal UI',
       (WidgetTester tester) async {
     await tester.pumpWidget(const LoopBreakerApp());
+    await tester.pumpAndSettle();
+
+    // Skip onboarding modal
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
 
     // App bar title
-    expect(find.text('LoopBreaker AI'), findsOneWidget);
+    expect(find.text('LoopBreaker'), findsOneWidget);
 
     // Primary action button on the journal screen
     expect(find.text('Analyze State'), findsOneWidget);
