@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue a previous session via context compaction",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "unclear_from_transcript",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "moderately_helpful",
+  "session_type": "quick_question",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "none",
+  "brief_summary": "Session consists only of a context compaction command with no actual user request or response to evaluate.",
+  "session_id": "5f266789-568b-41f4-a179-6ba4cf913375"
+}

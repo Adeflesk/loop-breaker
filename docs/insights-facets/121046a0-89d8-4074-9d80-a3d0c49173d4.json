@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue fixing CI test failures from a previous session",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "not_achieved",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "unhelpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "Session ended immediately due to rate limiting before any work could be done.",
+  "primary_success": "none",
+  "brief_summary": "User attempted to continue a previous CI fix session but hit a rate limit immediately, so no work was accomplished.",
+  "session_id": "121046a0-89d8-4074-9d80-a3d0c49173d4"
+}

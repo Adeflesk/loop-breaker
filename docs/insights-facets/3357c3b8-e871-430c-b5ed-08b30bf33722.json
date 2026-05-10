@@ -1,0 +1,18 @@
+{
+  "underlying_goal": "Implement Phase 3.1 Movement Protocols feature in LoopBreaker app and get suggestions for testing it",
+  "goal_categories": {
+    "feature_implementation": 1,
+    "testing_suggestions": 1
+  },
+  "outcome": "mostly_achieved",
+  "user_satisfaction_counts": {
+    "likely_satisfied": 1
+  },
+  "claude_helpfulness": "very_helpful",
+  "session_type": "multi_task",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "multi_file_changes",
+  "brief_summary": "User continued Phase 3.1 movement protocol implementation across backend/frontend and asked for sample stress entries to test the feature; Claude completed the implementation with passing tests and provided realistic test scenarios.",
+  "session_id": "3357c3b8-e871-430c-b5ed-08b30bf33722"
+}

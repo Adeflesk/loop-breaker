@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue executing an email system redesign implementation plan from a previous conversation",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "unclear_from_transcript",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "unhelpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "none",
+  "brief_summary": "User continued a prior session to execute an email redesign plan but the session only contains context restoration and a /compact command with no actual work done.",
+  "session_id": "ed862558-68d5-4924-b41f-9917e62a1c4b"
+}
