@@ -46,6 +46,24 @@ class ThoughtRecordResponse(BaseModel):
     balanced_thought: str
     linked_node: Optional[str] = None
 
+
+class CrisisHotline(BaseModel):
+    """Single crisis hotline resource."""
+    name: str
+    phone: Optional[str] = None
+    text: Optional[str] = None
+    url: Optional[str] = None
+    available: Optional[str] = None
+    note: Optional[str] = None
+
+
+class CrisisResourcesResponse(BaseModel):
+    """Crisis resources returned when crisis detected."""
+    message: str
+    hotlines: List[CrisisHotline]
+    emergency: str
+
+
 class AnalysisResponse(BaseModel):
     """The structured output sent back to the Flutter app."""
     detected_node: str
@@ -69,6 +87,9 @@ class AnalysisResponse(BaseModel):
     journal_entry_id: Optional[str] = None  # UUID of saved journal entry, for outcome tracking
     personal_loop: Optional[PersonalLoopContext] = None
     intervention_effectiveness: Optional[Dict[str, InterventionStats]] = None
+    crisis_detected: Optional[bool] = None
+    crisis_resources: Optional[CrisisResourcesResponse] = None
+    detected_keywords: Optional[List[str]] = None
 
 class InsightResponse(BaseModel):
     """For the Dashboard summary card."""
