@@ -82,8 +82,8 @@ class CrisisSafetyService:
         Returns:
             Tuple of (is_crisis: bool, detected_keywords: List[str])
         """
-        # Skip very short text (< 10 chars, avoid accidentals)
-        if len(text) < 10:
+        # Validate input: must be non-empty string
+        if not text or not isinstance(text, str) or len(text) < 10:
             return False, []
 
         # Find all keyword matches

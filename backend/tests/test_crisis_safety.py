@@ -82,3 +82,15 @@ class TestCrisisSafetyService:
         is_crisis, keywords = service.detect_crisis("Just a normal day")
         assert is_crisis is False
         assert keywords == []
+
+    def test_handles_none_input(self, service):
+        """Should gracefully handle None input."""
+        is_crisis, keywords = service.detect_crisis(None)
+        assert is_crisis is False
+        assert keywords == []
+
+    def test_handles_non_string_input(self, service):
+        """Should gracefully handle non-string input."""
+        is_crisis, keywords = service.detect_crisis(12345)
+        assert is_crisis is False
+        assert keywords == []
