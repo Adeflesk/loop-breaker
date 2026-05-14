@@ -130,6 +130,19 @@ class _FakeDBManager:
         self._history = []
         return True
 
+    def log_crisis_event(self, user_id: str = None, keywords: List[str] = None, detected_state: str = None, ip_address: str = None) -> str:
+        """Mock crisis event logging."""
+        import uuid
+        return str(uuid.uuid4())
+
+    def save_journal_entry(self, entry_id: str, raw_text: str, detected_state: str, sublabel: str, confidence: float, reasoning: str, risk_level: str, intervention_title: str, intervention_type: str, crisis_audit_id: str = None) -> bool:
+        """Mock journal entry saving."""
+        return True
+
+    def close(self):
+        """Mock close (no-op)."""
+        pass
+
 
 @pytest.fixture(autouse=True)
 def _patch_dependencies(monkeypatch):
@@ -147,6 +160,10 @@ def _patch_dependencies(monkeypatch):
     # Override the DB dependency with a fake in-memory implementation
     fake_db = _FakeDBManager()
     app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
+
+    # Initialize crisis_service in app.state (required for /analyze endpoint)
+    from app.crisis import CrisisSafetyService
+    app_main.app.state.crisis_service = CrisisSafetyService()
 
     yield fake_db
 

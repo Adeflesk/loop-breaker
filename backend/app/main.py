@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import List, Optional
 
 import httpx
@@ -16,11 +17,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .ai import query_local_ai
+from .crisis import CrisisSafetyService
 from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
 from .models import (
     AnalysisRequest,
     AnalysisResponse,
+    CrisisHotline,
+    CrisisResourcesResponse,
     FeedbackRequest,
     InsightResponse,
     JournalEntryResponse,
@@ -35,6 +39,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = create_db_manager()
+    app.state.crisis_service = CrisisSafetyService()
 
     # Initialize Sentry if DSN is provided and sentry_sdk is installed
     sentry_dsn = os.getenv("SENTRY_DSN", "")
@@ -71,6 +76,9 @@ FEATURE_SUBLABEL_ROUTING = os.getenv("FEATURE_SUBLABEL_ROUTING", "true").lower()
 FEATURE_THOUGHT_RECORDS = os.getenv("FEATURE_THOUGHT_RECORDS", "false").lower() == "true"
 FEATURE_SHAME_PROTOCOL = os.getenv("FEATURE_SHAME_PROTOCOL", "false").lower() == "true"
 FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lower() == "true"
+
+# Crisis Safety Feature
+FEATURE_CRISIS_SAFETY = os.getenv("FEATURE_CRISIS_SAFETY", "true").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -119,6 +127,49 @@ def get_db(request: Request) -> BehavioralStateManager:
     return request.app.state.db
 
 
+def _build_crisis_response() -> AnalysisResponse:
+    """Build crisis response with hotline resources."""
+    return AnalysisResponse(
+        detected_node="Crisis",
+        crisis_detected=True,
+        detected_keywords=[],  # Will be populated in endpoint
+        crisis_resources=CrisisResourcesResponse(
+            message="We're concerned about your safety. Please reach out for support:",
+            hotlines=[
+                CrisisHotline(
+                    name="988 Suicide & Crisis Lifeline",
+                    phone="988",
+                    url="https://988lifeline.org",
+                    available="24/7",
+                ),
+                CrisisHotline(
+                    name="Crisis Text Line",
+                    text="Text HOME to 741741",
+                    url="https://www.crisistextline.org",
+                    available="24/7",
+                ),
+                CrisisHotline(
+                    name="International Association for Suicide Prevention",
+                    url="https://www.iasp.info/resources/Crisis_Centres/",
+                    note="Find resources in your country",
+                ),
+            ],
+            emergency="If you are in immediate danger, call 911 (US) or your local emergency number",
+        ),
+        # All other fields null when crisis detected
+        sublabel=None,
+        emotion_sublabel=None,
+        confidence=None,
+        reasoning=None,
+        risk_level=None,
+        loop_detected=None,
+        intervention_title=None,
+        intervention_task=None,
+        education_info=None,
+        journal_entry_id=None,
+    )
+
+
 def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
     """
     Map (node, sublabel) to arc position (1-8) on the 8-node Rewire loop.
@@ -161,6 +212,55 @@ def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_behavior(body: AnalysisRequest, request: Request, db: BehavioralStateManager = Depends(get_db)):
     request_id = getattr(request.state, "request_id", "")
+
+    # ===== NEW: Crisis Detection =====
+    if FEATURE_CRISIS_SAFETY:
+        is_crisis, keywords = app.state.crisis_service.detect_crisis(body.user_text)
+
+        if is_crisis:
+            # Log to audit table
+            user_id = None  # TODO: Extract from auth if available
+            ip_address = request.client.host if request.client else "unknown"
+            crisis_audit_id = db.log_crisis_event(
+                user_id=user_id,
+                keywords=keywords,
+                detected_state=None,  # Not yet classified
+                ip_address=ip_address,
+            )
+
+            # Save to journal with crisis flag
+            entry_id = str(uuid.uuid4())
+            db.save_journal_entry(
+                entry_id=entry_id,
+                raw_text=body.user_text,
+                detected_state="Crisis",
+                sublabel="",
+                confidence=1.0,
+                reasoning="Crisis keywords detected",
+                risk_level="high",
+                intervention_title="Crisis Resources",
+                intervention_type="crisis",
+                crisis_audit_id=crisis_audit_id,
+            )
+
+            # Log to Sentry
+            logger.warning(
+                "Crisis detected in journal entry",
+                extra={
+                    "event": "crisis_detected",
+                    "keywords": keywords,
+                    "crisis_audit_id": crisis_audit_id,
+                    "entry_id": entry_id,
+                },
+            )
+
+            # Return crisis response
+            response = _build_crisis_response()
+            response.detected_keywords = keywords
+            response.journal_entry_id = entry_id
+            return response
+
+    # ===== Continue with normal flow (existing code) =====
     # 1. Get Intelligence from ai.py
     # Returns: {"detected_node": "...", "confidence": 0.0, "reasoning": "..."}
     prediction = await query_local_ai(body.user_text, request_id=request_id)
