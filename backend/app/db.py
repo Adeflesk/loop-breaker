@@ -650,6 +650,71 @@ class BehavioralStateManager:
             logger.error("DB get intervention effectiveness error", exc_info=True)
             return {}
 
+    def log_crisis_event(
+        self,
+        user_id: str,
+        keywords: List[str],
+        detected_state: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Log crisis event to audit table for clinical review.
+
+        Args:
+            user_id: User's ID (or None for anonymous)
+            keywords: List of detected crisis keywords
+            detected_state: AI-detected emotional state (if available)
+            ip_address: Request IP address for audit trail
+
+        Returns:
+            Crisis event ID (UUID), or None if DB unavailable
+        """
+        if not self.is_available:
+            return None
+
+        try:
+            import uuid
+            from datetime import datetime
+
+            event_id = str(uuid.uuid4())
+            timestamp = datetime.utcnow().isoformat()
+
+            query = """
+            CREATE (c:CrisisEvent {
+                id: $event_id,
+                user_id: $user_id,
+                timestamp: $timestamp,
+                detected_keywords: $keywords,
+                detected_state: $detected_state,
+                ip_address: $ip_address,
+                flagged_for_review: false
+            })
+            RETURN c.id as id
+            """
+
+            with self.driver.session() as session:
+                result = session.run(
+                    query,
+                    {
+                        "event_id": event_id,
+                        "user_id": user_id,
+                        "timestamp": timestamp,
+                        "keywords": keywords,
+                        "detected_state": detected_state,
+                        "ip_address": ip_address,
+                    },
+                )
+                result.consume()
+
+            return event_id
+
+        except Exception as e:
+            logger.warning(
+                "Failed to log crisis event",
+                extra={"event": "crisis_log_failed", "error": str(e)},
+            )
+            return None
+
     def save_journal_entry(
         self,
         entry_id: str,
@@ -661,6 +726,7 @@ class BehavioralStateManager:
         risk_level: str,
         intervention_title: str,
         intervention_type: str,
+        crisis_audit_id: Optional[str] = None,
     ) -> bool:
         """
         Saves the raw journal text and analysis result as a JournalEntry node.
@@ -682,7 +748,9 @@ class BehavioralStateManager:
                         reasoning: $reasoning,
                         risk_level: $risk_level,
                         intervention_title: $title,
-                        intervention_type: $itype
+                        intervention_type: $itype,
+                        crisis_detected: $crisis_detected,
+                        crisis_audit_id: $crisis_audit_id
                     })
                 """,
                     id=entry_id,
@@ -694,6 +762,8 @@ class BehavioralStateManager:
                     risk_level=risk_level,
                     title=intervention_title,
                     itype=intervention_type or "",
+                    crisis_detected=crisis_audit_id is not None,
+                    crisis_audit_id=crisis_audit_id,
                 )
             return True
         except Exception:

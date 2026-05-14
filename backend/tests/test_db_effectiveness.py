@@ -303,3 +303,45 @@ class TestGetInterventionEffectiveness:
         result = manager.get_intervention_effectiveness("Stress")
 
         assert result == {}
+
+
+class TestCrisisEventLogging:
+    """Tests for crisis event logging to Neo4j."""
+
+    def test_log_crisis_event_creates_node(self):
+        """Should create CrisisEvent node in Neo4j."""
+        manager = BehavioralStateManager.__new__(BehavioralStateManager)
+        manager.is_available = True
+
+        mock_session = MagicMock()
+        mock_driver = MagicMock()
+        mock_driver.session.return_value.__enter__.return_value = mock_session
+        manager.driver = mock_driver
+
+        manager.log_crisis_event(
+            user_id="user123",
+            keywords=["suicide", "harm"],
+            detected_state="Shame",
+            ip_address="192.168.1.1"
+        )
+
+        # Verify query was called
+        mock_session.run.assert_called_once()
+        call_args = mock_session.run.call_args
+        assert "CrisisEvent" in str(call_args)
+
+    def test_log_crisis_event_handles_unavailable_db(self):
+        """Should gracefully handle unavailable DB."""
+        manager = BehavioralStateManager.__new__(BehavioralStateManager)
+        manager.is_available = False
+        manager.driver = MagicMock()
+
+        # Should not raise exception
+        result = manager.log_crisis_event(
+            user_id="user123",
+            keywords=["suicide"],
+            detected_state=None,
+            ip_address="192.168.1.1"
+        )
+
+        assert result is None  # Graceful degradation
