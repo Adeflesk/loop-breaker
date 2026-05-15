@@ -119,7 +119,7 @@ async def query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
         "JSON response:"
     )
 
-    model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+    model = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
     logger.info(

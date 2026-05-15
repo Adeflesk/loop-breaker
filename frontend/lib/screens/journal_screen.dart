@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'thought_record_screen.dart';
 import '../services/api_client.dart';
+import '../services/crisis_safety_service.dart';
 import '../widgets/breathing_circle.dart';
+import '../widgets/crisis_safety_dialog.dart';
 import '../widgets/risk_level_badge.dart';
 
 class JournalScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class JournalScreen extends StatefulWidget {
 
 class _JournalScreenState extends State<JournalScreen> {
   final TextEditingController _controller = TextEditingController();
+  late CrisisSafetyService crisisSafetyService;
   String _statusMessage = 'How are you feeling right now?';
   String _riskLevel = 'Low';
   bool _isLoading = false;
@@ -21,12 +24,67 @@ class _JournalScreenState extends State<JournalScreen> {
   String? _arcLabel;  // Node position in 8-node loop
   String? _lastJournalEntryId;  // Track the entry ID for outcome recording
 
-  Future<void> _analyzeEntry() async {
-    if (_controller.text.trim().isEmpty) return;
+  @override
+  void initState() {
+    super.initState();
+    crisisSafetyService = CrisisSafetyService();
+  }
+
+  List<Map<String, String>> _getHotlines() {
+    return [
+      {
+        'name': '988 Suicide & Crisis Lifeline',
+        'phone': '988',
+        'url': 'https://988lifeline.org',
+        'available': '24/7',
+      },
+      {
+        'name': 'Crisis Text Line',
+        'text': 'Text HOME to 741741',
+        'url': 'https://www.crisistextline.org',
+        'available': '24/7',
+      },
+      {
+        'name': 'International Association for Suicide Prevention',
+        'url': 'https://www.iasp.info/resources/Crisis_Centres/',
+        'note': 'Find resources in your country',
+      },
+    ];
+  }
+
+  void _onSubmitPressed() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    // Check for crisis indicators
+    final (isCrisis, _) = crisisSafetyService.detectCrisis(text);
+
+    if (isCrisis) {
+      // Show crisis dialog with hotlines
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => CrisisSafetyDialog(
+          hotlines: _getHotlines(),
+          onContinue: () {
+            Navigator.pop(context);
+            _submitEntry(text);
+          },
+          onCancel: () {
+            Navigator.pop(context);
+          },
+        ),
+      );
+    } else {
+      _submitEntry(text);
+    }
+  }
+
+  Future<void> _submitEntry(String text) async {
     setState(() => _isLoading = true);
 
     try {
-      final data = await ApiClient.analyzeEntry(_controller.text);
+      final data = await ApiClient.analyzeEntry(text);
       _lastJournalEntryId = data['journal_entry_id'] as String?;
       setState(() {
         final node = data['detected_node'] ?? 'Unknown';
@@ -1096,7 +1154,7 @@ class _JournalScreenState extends State<JournalScreen> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
-                        onPressed: _analyzeEntry,
+                        onPressed: _onSubmitPressed,
                         child: const Text('Analyze State'),
                       ),
               ),
