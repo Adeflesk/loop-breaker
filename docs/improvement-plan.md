@@ -279,27 +279,28 @@ Crisis detection and escalation for journal entries containing indicators of sui
 - Frontend: CrisisSafetyService (Dart) with client-side detection
 - Frontend: CrisisSafetyDialog widget with 3 hotline resources (988, Crisis Text Line, IASP)
 - Frontend: Journal screen integration with proper dialog flow and user agency
-- Testing: 26 backend tests (13 unit + 3 integration) + 41 frontend tests (20 service + 9 widget + 12 integration)
+- Testing: 16 backend tests (13 unit + 3 integration) + 41 frontend tests (20 service + 9 widget + 12 integration)
 
 **Code Stats:**
-- backend/app/crisis.py: 280 lines (CrisisSafetyService)
-- backend/app/models.py: +3 fields (AnalysisResponse)
-- backend/app/main.py: +35 lines (/analyze integration)
-- backend/app/db.py: +65 lines (CrisisEvent logging)
-- frontend/lib/services/crisis_safety_service.dart: 100 lines
-- frontend/lib/widgets/crisis_safety_dialog.dart: 165 lines
-- frontend/lib/screens/journal_screen.dart: +40 lines (integration)
-- Total new/modified code: ~750 lines
-- Total test code: ~250 lines (frontend) + ~100 lines (backend)
+- backend/app/crisis.py: 102 lines (CrisisSafetyService)
+- backend/app/models.py: +21 lines (CrisisResourcesResponse, CrisisHotline, crisis response fields)
+- backend/app/main.py: +99 lines (/analyze integration, crisis detection flow)
+- backend/app/db.py: +71 lines (CrisisEvent logging, audit trail)
+- frontend/lib/services/crisis_safety_service.dart: 110 lines
+- frontend/lib/widgets/crisis_safety_dialog.dart: 141 lines
+- frontend/lib/screens/journal_screen.dart: integrated dialog in submit flow
+- Total new/modified code: ~544 lines
+- Total test code: ~470 lines (frontend) + ~96 lines (backend)
 
 **Commits:**
 - e9dbf79: feat: add crisis response models (CrisisResourcesResponse, CrisisHotline)
 - aaef637: feat: implement CrisisSafetyService with keyword detection
 - 3127fa6: fix: add None and non-string input validation to detect_crisis()
-- ec26131: feat: add crisis event logging to database
+- ec26131: feat: add crisis event logging to Neo4j audit table
 - 03d471d: feat: integrate crisis detection in /analyze endpoint
-- 8ab8260: test: add 3 integration tests for crisis flow
-- (Task 6-10 commits from subagent-driven development)
+- 8ab8260: test: add integration tests for crisis detection in /analyze
+- c06af48: feat: create crisis safety dialog widget for crisis detection display
+- 4b7d0c7: docs: add crisis safety layer documentation and mark Priority 3 complete
 
 **Success Criteria (All Met):**
 - ✅ Crisis keywords detected in text (frontend + backend)
@@ -309,7 +310,7 @@ Crisis detection and escalation for journal entries containing indicators of sui
 - ✅ All crisis entries saved to journal with audit ID
 - ✅ API response structure matches spec
 - ✅ Feature flag works (can be disabled)
-- ✅ ≥26 backend tests, ≥41 frontend tests
+- ✅ ≥16 backend tests, ≥41 frontend tests
 - ✅ 100% coverage for crisis.py
 - ✅ No regressions to existing /analyze flow
 - ✅ Support team can filter crisis events in database
