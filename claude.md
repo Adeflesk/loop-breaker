@@ -138,6 +138,58 @@ loop-breaker/
 - Avoid string slicing without guardrails on parsed date/time values.
 - Keep UI code declarative and use small helper widgets where appropriate.
 
+## Crisis Safety Layer
+
+**Feature Flag:** `FEATURE_CRISIS_SAFETY` (default: true)
+
+The crisis safety layer provides dual-layer detection and escalation for crisis indicators in journal entries:
+
+**Backend (`backend/app/crisis.py`):**
+- `CrisisSafetyService` class detects crisis keywords via case-insensitive regex
+- Minimum text length: 10 characters (avoids false positives)
+- Returns tuple: `(is_crisis: bool, detected_keywords: List[str])`
+- Logs crisis events to Neo4j for clinical review (CrisisEvent nodes)
+- Feature flag allows disabling detection in `backend/app/main.py`
+
+**Default Crisis Keywords (28 total):**
+- Suicide: suicide, kill myself, kill my self, end it, end my life
+- Self-harm: harm myself, self harm, self-harm, cut myself, cutting
+- Overdose: overdose, OD, take pills
+- Hopelessness: hopeless, no point, pointless, give up, can't go on, better off dead, everyone would be better without me, nothing matters, why bother
+- Abuse/Violence: abuse, being hurt, domestic violence, hit me, rape, sexual assault
+
+**Frontend (`frontend/lib/services/crisis_safety_service.dart`):**
+- Mirrors backend detection logic for real-time client-side alerting
+- `CrisisSafetyDialog` widget displays hotlines: 988, Crisis Text Line, IASP
+- Integration in `journal_screen.dart` shows dialog before API call
+- User can continue submission or cancel (user agency preserved)
+
+**API Contract:**
+When crisis detected, `/analyze` returns:
+```json
+{
+  "crisis_detected": true,
+  "detected_keywords": ["suicide", "..."],
+  "crisis_resources": {
+    "message": "We're concerned about your safety...",
+    "hotlines": [...]
+  },
+  "detected_node": "Crisis",
+  "sublabel": null,
+  ...other_fields: null
+}
+```
+
+**Testing:**
+- Backend: 13 unit tests + 3 integration tests (100% coverage for crisis.py)
+- Frontend: 20 service unit tests + 9 dialog tests + 12 integration tests (41 total)
+- All tests pass with proper async handling and mocking
+
+**Deployment:**
+- No breaking changes (all new fields optional)
+- Graceful degradation if Neo4j unavailable
+- Feature flag allows rollback: set `FEATURE_CRISIS_SAFETY=false`
+
 ## Prompt & Response Contract
 
 ### Safe Defaults (Fallback Values)
@@ -267,7 +319,7 @@ except Exception as e:
 
 ## Notes & Maintenance
 
-- **Last updated:** 2026-04-29
+- **Last updated:** 2026-05-15
 - **Next review:** After Phase 1 completion (week 2, ~May 5)
 - This file documents how Claude works with the LoopBreaker team—update it as workflows evolve
 - When committing major architectural changes or new patterns, update the relevant section here
