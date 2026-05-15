@@ -646,3 +646,41 @@ def test_analyze_personalization_fields_optional(client: TestClient, _patch_depe
     # (This just means the response follows the schema)
     assert "detected_node" in body
     assert "intervention_title" in body
+
+
+# Task 5: Crisis Safety Integration Tests
+
+def test_analyze_returns_crisis_response(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Should return crisis resources when crisis detected."""
+    response = client.post("/analyze", json={"user_text": "I want to kill myself today and end it all"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["crisis_detected"] is True
+    assert "crisis_resources" in data
+    assert len(data["crisis_resources"]["hotlines"]) > 0
+    assert data["detected_keywords"] != []
+
+
+def test_analyze_normal_entry_ignores_crisis(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Should return normal response for non-crisis entry."""
+    response = client.post("/analyze", json={"user_text": "I had a good day at work today and feel accomplished"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["crisis_detected"] is False or data["crisis_detected"] is None
+    assert data["detected_node"] is not None  # Should do normal classification
+
+
+def test_crisis_response_includes_hotlines(client: TestClient, _patch_dependencies: _FakeDBManager):
+    """Should include all required hotlines in crisis response."""
+    response = client.post("/analyze", json={"user_text": "I want to kill myself today"})
+
+    assert response.status_code == 200
+    data = response.json()
+    hotlines = data["crisis_resources"]["hotlines"]
+
+    # Check for required hotlines
+    hotline_names = [h["name"] for h in hotlines]
+    assert any("988" in name for name in hotline_names)
+    assert any("Crisis Text" in name for name in hotline_names)

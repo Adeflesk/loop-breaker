@@ -131,6 +131,15 @@ def _build_crisis_response() -> AnalysisResponse:
     """Build crisis response with hotline resources."""
     return AnalysisResponse(
         detected_node="Crisis",
+        sublabel=None,
+        emotion_sublabel=None,
+        confidence=1.0,
+        reasoning="Crisis keywords detected",
+        risk_level="high",
+        loop_detected=False,
+        intervention_title="Crisis Resources",
+        intervention_task="Reach out to a crisis hotline for immediate support",
+        education_info="Crisis support is available 24/7",
         crisis_detected=True,
         detected_keywords=[],  # Will be populated in endpoint
         crisis_resources=CrisisResourcesResponse(
@@ -156,16 +165,6 @@ def _build_crisis_response() -> AnalysisResponse:
             ],
             emergency="If you are in immediate danger, call 911 (US) or your local emergency number",
         ),
-        # All other fields null when crisis detected
-        sublabel=None,
-        emotion_sublabel=None,
-        confidence=None,
-        reasoning=None,
-        risk_level=None,
-        loop_detected=None,
-        intervention_title=None,
-        intervention_task=None,
-        education_info=None,
         journal_entry_id=None,
     )
 
