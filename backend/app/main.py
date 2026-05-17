@@ -27,8 +27,10 @@ from .models import (
     CrisisResourcesResponse,
     FeedbackRequest,
     InsightResponse,
+    InterventionStats,
     JournalEntryResponse,
     JournalOutcomeRequest,
+    PersonalLoopContext,
     ThoughtRecordRequest,
     ThoughtRecordResponse,
 )
@@ -302,16 +304,20 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         logger.error("DB log failed in /analyze", exc_info=True, extra={"request_id": request_id})
         risk, is_loop = "Low", False
 
-    # 3b. Fetch personal context (non-blocking)
+    # 3b. Fetch personal context (non-blocking, non-critical)
     personal_loop = None
     intervention_effectiveness = None
 
     try:
         loop_data = db.analyze_loop_path(days=30)
         if loop_data:
-            personal_loop = loop_data
-    except Exception as e:
-        logger.warning(f"Failed to fetch loop pattern: {e}")
+            personal_loop = PersonalLoopContext(
+                most_common_entry=loop_data.get("most_common_entry"),
+                cycle_length_hours=loop_data.get("cycle_length_hours"),
+                where_in_cycle=loop_data.get("where_in_cycle")
+            )
+    except Exception:
+        logger.warning("Failed to fetch loop pattern", exc_info=True)
 
     try:
         effectiveness_data = db.get_intervention_effectiveness(
@@ -319,9 +325,12 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
             sublabel=sublabel
         )
         if effectiveness_data:
-            intervention_effectiveness = effectiveness_data
-    except Exception as e:
-        logger.warning(f"Failed to fetch intervention effectiveness: {e}")
+            intervention_effectiveness = {
+                key: InterventionStats(**value)
+                for key, value in effectiveness_data.items()
+            }
+    except Exception:
+        logger.warning("Failed to fetch intervention effectiveness", exc_info=True)
 
     # 4. Compute arc position (8-node loop positioning)
     arc_pos, arc_label = compute_arc_position(node, sublabel)
@@ -381,29 +390,29 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
 
     # 6c. Personalize education_info with user loop and effectiveness data
     if education_text:
-        if education_depth == "introduce" and personal_loop and personal_loop.get("most_common_entry"):
-            most_common = personal_loop["most_common_entry"]
+        if education_depth == "introduce" and personal_loop and personal_loop.most_common_entry:
+            most_common = personal_loop.most_common_entry
             # Add context about their specific loop pattern
             if education_text:
                 education_text = f"For YOUR {most_common} pattern, {education_text[0].lower()}{education_text[1:]}"
 
-        elif education_depth == "reinforce" and personal_loop and personal_loop.get("most_common_entry"):
-            most_common = personal_loop["most_common_entry"]
+        elif education_depth == "reinforce" and personal_loop and personal_loop.most_common_entry:
+            most_common = personal_loop.most_common_entry
             # Add effectiveness reference if available
             if intervention_effectiveness and breaker.get("title") in intervention_effectiveness:
                 stats = intervention_effectiveness[breaker["title"]]
-                percentage = stats.get("percentage", 0)
+                percentage = stats.percentage
                 education_text = f"{education_text}\n\nFor you, {breaker['title']} works {percentage}% of the time based on your history."
             else:
                 education_text = f"{education_text}\n\nThis is particularly important for your {most_common} pattern."
 
-        elif education_depth == "deepen" and personal_loop and personal_loop.get("most_common_entry"):
-            most_common = personal_loop["most_common_entry"]
+        elif education_depth == "deepen" and personal_loop and personal_loop.most_common_entry:
+            most_common = personal_loop.most_common_entry
             # Add both context and effectiveness for deeper dives
             context_text = f"In your {most_common} cycle, {education_text[0].lower()}{education_text[1:]}" if education_text else ""
             if intervention_effectiveness and breaker.get("title") in intervention_effectiveness:
                 stats = intervention_effectiveness[breaker["title"]]
-                percentage = stats.get("percentage", 0)
+                percentage = stats.percentage
                 context_text += f"\n\nYour track record shows this works {percentage}% of the time, making it a proven strategy for your pattern."
             education_text = context_text
 
