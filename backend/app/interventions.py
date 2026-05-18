@@ -40,5 +40,35 @@ INTERVENTIONS = {
         "task": "Send a simple 'Thinking of you' or a meme to one person. No deep conversation required.",
         "education": "Isolation creates a feedback loop that says 'no one cares.' Small, low-friction interactions provide proof to the contrary.",
         "type": "other"
-    }
+    },
+    "Stress_Movement": {
+        "title": "Somatic Reset",
+        "task": "Stand up. Shake out your arms and legs vigorously for 30 seconds, then stomp your feet 10 times. Feel the ground beneath you.",
+        "education": "Stress is a sympathetic overdrive. Rhythmic shaking and grounding movements activate your parasympathetic nervous system and signal safety to your body.",
+        "type": "movement"
+    },
+    "Anxiety_Movement": {
+        "title": "Somatic Reset",
+        "task": "Stand up. Shake out your arms and legs vigorously for 30 seconds, then stomp your feet 10 times. Feel the ground beneath you.",
+        "education": "Anxiety often locks your nervous system into high alert. Rhythmic shaking and grounding movements help you safely down-regulate and return to baseline.",
+        "type": "movement"
+    },
+    "Procrastination_Movement": {
+        "title": "Activation Burst",
+        "task": "Do 10 jumping jacks, 5 burpees, or 30 seconds of dancing. Move fast and let your body lead.",
+        "education": "Procrastination often hides low activation and avoidance. Vigorous movement wakes up your prefrontal cortex and shifts from avoidance to action.",
+        "type": "movement"
+    },
+    "Overwhelm_Movement": {
+        "title": "Activation Burst",
+        "task": "Do 10 jumping jacks, 5 burpees, or 30 seconds of dancing. Move fast and let your body lead.",
+        "education": "Overwhelm paired with immobility locks you in place. Vigorous movement breaks the freeze response and restores agency and momentum.",
+        "type": "movement"
+    },
+    "Numbness_Movement": {
+        "title": "Sensation Snap",
+        "task": "Splash cold water on your face or hold ice cubes, then do 10 arm circles or march in place for 20 seconds. Notice what you feel.",
+        "education": "Numbness is a freeze response. Intense sensory input plus light movement safely reactivate your nervous system and bring you back into your window of tolerance.",
+        "type": "movement"
+    },
 }
