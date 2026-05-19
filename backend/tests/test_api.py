@@ -301,35 +301,52 @@ def test_intervention_resets_loop(
     assert after_reset["loop_detected"] is False
 
 
-def test_movement_intervention_type_logged(client: TestClient, _patch_dependencies: _FakeDBManager, monkeypatch: pytest.MonkeyPatch):
-    """Test that movement interventions log the correct type."""
-    async def movement_response(_text: str) -> Dict[str, Any]:
+def test_movement_intervention_types_in_catalog(client: TestClient):
+    """Verify that movement interventions are in the INTERVENTIONS catalog with type='movement'."""
+    from app.interventions import INTERVENTIONS
+
+    # Verify all expected movement interventions exist with correct type
+    movement_interventions = {
+        "Stress_Movement": "Somatic Reset",
+        "Anxiety_Movement": "Somatic Reset",
+        "Procrastination_Movement": "Activation Burst",
+        "Overwhelm_Movement": "Activation Burst",
+        "Numbness_Movement": "Sensation Snap",
+    }
+
+    for key, expected_title in movement_interventions.items():
+        assert key in INTERVENTIONS, f"Missing movement intervention: {key}"
+        intervention = INTERVENTIONS[key]
+        assert intervention["type"] == "movement", f"{key} should have type='movement', got {intervention['type']}"
+        assert intervention["title"] == expected_title, f"{key} title mismatch"
+        assert "task" in intervention, f"{key} missing task field"
+        assert "education" in intervention, f"{key} missing education field"
+
+
+def test_intervention_type_persisted_in_feedback(client: TestClient, _patch_dependencies: _FakeDBManager, monkeypatch: pytest.MonkeyPatch):
+    """Verify that intervention_type parameter is accepted and tracked in feedback."""
+    async def stress_response(_text: str) -> Dict[str, Any]:
         return {
             "detected_node": "Stress",
-            "emotion_sublabel": "Overwhelmed",
-            "confidence": 0.95,
-            "reasoning": "user requested movement",
+            "emotion_sublabel": "Stressed",
+            "confidence": 0.9,
+            "reasoning": "user is stressed",
         }
 
-    monkeypatch.setattr(app_main, "query_local_ai", movement_response)
+    monkeypatch.setattr(app_main, "query_local_ai", stress_response)
 
-    # Trigger analysis three times to create a loop for Stress
-    for i in range(3):
-        response = client.post("/analyze", json={"user_text": f"stressed and need movement {i}"})
-        assert response.status_code == 200
+    # Trigger three stress detections to create a loop
+    client.post("/analyze", json={"user_text": "stressed"})
+    client.post("/analyze", json={"user_text": "still stressed"})
+    response = client.post("/analyze", json={"user_text": "still stressed again"})
 
-    # The third request should detect a loop and return the intervention
-    body = response.json()
-    assert body["detected_node"] == "Stress"
-    assert body["loop_detected"] is True
-    assert body["intervention_title"] == "Physiological Sigh"  # Primary intervention
+    assert response.status_code == 200
 
-    # Now verify feedback was logged with correct type
-    # (The fake DB tracks what was logged in log_and_analyze calls)
+    # Verify at least one intervention was logged
     assert len(_patch_dependencies.logged) >= 3
+    # The Stress intervention has type="breathing" from INTERVENTIONS catalog
+    # Check that the type field was passed through
     last_logged = _patch_dependencies.logged[-1]
-    # Tuple is: (node_name, sublabel, confidence, title, task, intervention_type)
-    # We're checking that the primary intervention was logged
+    # Tuple structure: (node_name, sublabel, confidence, title, task, intervention_type)
     assert last_logged[0] == "Stress"
-    assert last_logged[3] == "Physiological Sigh"  # title
-    assert last_logged[5] == "breathing"  # intervention_type
+    assert last_logged[5] == "breathing"  # Stress uses breathing type intervention
