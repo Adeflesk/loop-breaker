@@ -12,11 +12,21 @@ class JournalScreen extends StatefulWidget {
 }
 
 class _JournalScreenState extends State<JournalScreen> {
+  // Map of node name to available interventions (primary + variants)
+  static const Map<String, List<String>> INTERVENTION_VARIANTS = {
+    'Stress': ['Physiological Sigh', 'Somatic Reset'],
+    'Anxiety': ['5-4-3-2-1 Grounding', 'Somatic Reset'],
+    'Procrastination': ['The 5-Minute Sprint', 'Activation Burst'],
+    'Overwhelm': ['Brain Dump', 'Activation Burst'],
+    'Numbness': ['Temperature Shock', 'Sensation Snap'],
+  };
+
   final TextEditingController _controller = TextEditingController();
   String _statusMessage = 'How are you feeling right now?';
   String _riskLevel = 'Low';
   bool _isLoading = false;
   String _aiReasoning = '';
+  int _currentInterventionIndex = 0;  // Track which variant is showing
 
   Future<void> _analyzeEntry() async {
     if (_controller.text.trim().isEmpty) return;
