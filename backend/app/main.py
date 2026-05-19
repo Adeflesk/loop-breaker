@@ -11,17 +11,6 @@ from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
 from .models import AnalysisRequest, AnalysisResponse, FeedbackRequest, InsightResponse
 
-# Configure logging
-log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend.log")
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Console (stdout)
-        logging.FileHandler(log_file)  # File: backend.log in backend/ directory
-    ]
-)
-
 logger = logging.getLogger(__name__)
 
 
@@ -45,32 +34,21 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    if hasattr(app.state, "db"):
-        app.state.db.close()
-        logger.info("Database connection closed.")
+    app.state.db.close()
 
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
-    if origin.strip()
-]
-ALLOWED_ORIGIN_REGEX = os.getenv(
-    "ALLOWED_ORIGIN_REGEX",
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
-)
 
-# Rewire Feature Flags
-FEATURE_SUBLABELS = os.getenv("FEATURE_SUBLABELS", "true").lower() == "true"
-FEATURE_NEEDS_CHECK = os.getenv("FEATURE_NEEDS_CHECK", "true").lower() == "true"
-FEATURE_RECOVERY_TREND = os.getenv("FEATURE_RECOVERY_TREND", "true").lower() == "true"
-FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lower() == "true"
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8080,http://localhost:5173,"
+    "http://127.0.0.1:3000,http://127.0.0.1:8080,http://127.0.0.1:5173",
+).split(",")
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,11 +92,14 @@ async def analyze_behavior(request: AnalysisRequest, db: BehavioralStateManager 
         breaker["title"],
         breaker["task"],
         sublabel=sublabel,
+        intervention_type=breaker.get("type", "other"),
     )
 
     # 4. Return the full payload to Flutter
-    response_data = {
+    return {
         "detected_node": node,
+        "sublabel": sublabel,
+        "emotion_sublabel": sublabel,
         "confidence": prediction["confidence"],
         "reasoning": prediction["reasoning"],
         "risk_level": risk,
@@ -126,18 +107,8 @@ async def analyze_behavior(request: AnalysisRequest, db: BehavioralStateManager 
         # Only send intervention details if a loop was actually detected
         "intervention_title": breaker["title"] if is_loop else "",
         "intervention_task": breaker["task"] if is_loop else "",
-        "education_info": breaker["education"] if is_loop else "",
+        "education_info": breaker["education"] if is_loop else ""
     }
-    
-    # Optional fields controlled by feature flags
-    if FEATURE_SUBLABELS:
-        response_data["sublabel"] = sublabel
-        response_data["emotion_sublabel"] = sublabel
-    
-    if FEATURE_MOVEMENT_PROTOCOLS and is_loop:
-        response_data["intervention_type"] = breaker.get("type", "other")
-    
-    return response_data
 
 
 @app.get("/insight", response_model=InsightResponse)
@@ -145,35 +116,29 @@ async def get_insight(db: BehavioralStateManager = Depends(get_db)):
     stats = db.get_ai_insight()
 
     if not stats:
-        base_response = {
+        return {
             "message": "Welcome! Start journaling to track your resilience.",
             "success_rate": 0,
             "top_loop": "None",
+            "trend": "unknown",
+            "streak": 0,
             "missing_need": None,
             "trigger_count": 0,
         }
-        if FEATURE_RECOVERY_TREND:
-            base_response["trend"] = "unknown"
-            base_response["streak"] = 0
-        return base_response
 
     loop_count = stats.get("count", 0)
-    response_data = {
+    return {
         "message": stats.get(
             "coaching_message",
             f"You've disrupted {loop_count} patterns in your top loop. Keep going!",
         ),
         "success_rate": round(float(stats.get("success_rate", 0)), 2),
         "top_loop": stats.get("top_loop", "None"),
+        "trend": stats.get("trend", "unknown"),
+        "streak": int(stats.get("streak", 0)),
         "missing_need": stats.get("missing_need"),
         "trigger_count": int(stats.get("trigger_count", 0)),
     }
-    
-    if FEATURE_RECOVERY_TREND:
-        response_data["trend"] = stats.get("trend", "unknown")
-        response_data["streak"] = int(stats.get("streak", 0))
-    
-    return response_data
 
 @app.get("/history")
 async def get_history(db: BehavioralStateManager = Depends(get_db)):
