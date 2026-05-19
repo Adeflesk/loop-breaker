@@ -69,8 +69,9 @@ class _FakeDBManager:
         title: str,
         task: str,
         sublabel: str = "General",
+        intervention_type: str = "other",
     ):
-        self.logged.append((node_name, sublabel, confidence, title, task))
+        self.logged.append((node_name, sublabel, confidence, title, task, intervention_type))
         self.node_history.append(node_name)
         recent = self.node_history[-3:]
         is_loop = len(recent) == 3 and len(set(recent)) == 1
@@ -298,3 +299,37 @@ def test_intervention_resets_loop(
     after_reset = client.post("/analyze", json={"user_text": "fresh start"}).json()
     assert after_reset["risk_level"] == "Low"
     assert after_reset["loop_detected"] is False
+
+
+def test_movement_intervention_type_logged(client: TestClient, _patch_dependencies: _FakeDBManager, monkeypatch: pytest.MonkeyPatch):
+    """Test that movement interventions log the correct type."""
+    async def movement_response(_text: str) -> Dict[str, Any]:
+        return {
+            "detected_node": "Stress",
+            "emotion_sublabel": "Overwhelmed",
+            "confidence": 0.95,
+            "reasoning": "user requested movement",
+        }
+
+    monkeypatch.setattr(app_main, "query_local_ai", movement_response)
+
+    # Trigger analysis three times to create a loop for Stress
+    for i in range(3):
+        response = client.post("/analyze", json={"user_text": f"stressed and need movement {i}"})
+        assert response.status_code == 200
+
+    # The third request should detect a loop and return the intervention
+    body = response.json()
+    assert body["detected_node"] == "Stress"
+    assert body["loop_detected"] is True
+    assert body["intervention_title"] == "Physiological Sigh"  # Primary intervention
+
+    # Now verify feedback was logged with correct type
+    # (The fake DB tracks what was logged in log_and_analyze calls)
+    assert len(_patch_dependencies.logged) >= 3
+    last_logged = _patch_dependencies.logged[-1]
+    # Tuple is: (node_name, sublabel, confidence, title, task, intervention_type)
+    # We're checking that the primary intervention was logged
+    assert last_logged[0] == "Stress"
+    assert last_logged[3] == "Physiological Sigh"  # title
+    assert last_logged[5] == "breathing"  # intervention_type
