@@ -121,6 +121,19 @@ class _FakeDBManager:
         """Mock increment (no-op)."""
         pass
 
+    def save_journal_entry(self, entry_id: str, raw_text: str, detected_state: str, sublabel: str, confidence: float, reasoning: str, risk_level: str, intervention_title: str, intervention_type: str, crisis_audit_id: str = None) -> bool:
+        """Mock journal entry saving."""
+        return True
+
+    def get_shame_count_24h(self):
+        """Mock shame count."""
+        return 0
+
+    def log_crisis_event(self, user_id: str = None, keywords: List[str] = None, detected_state: str = None, ip_address: str = None) -> str:
+        """Mock crisis event logging."""
+        import uuid
+        return str(uuid.uuid4())
+
     def get_ai_insight(self):
         return self.insight_data
 
