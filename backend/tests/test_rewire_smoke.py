@@ -145,6 +145,10 @@ def _patch_dependencies(monkeypatch):
     fake_db = _FakeDBManager()
     app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
 
+    # Initialize crisis service for the app
+    from app.crisis import CrisisSafetyService
+    app_main.app.state.crisis_service = CrisisSafetyService()
+
     yield fake_db
 
     app_main.app.dependency_overrides.clear()
