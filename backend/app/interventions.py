@@ -30,6 +30,12 @@ INTERVENTIONS = {
             },
             "type": "cognitive"
         },
+        "movement": {
+            "title": "2-Minute Body Break",
+            "task": "Stand up and do 10 jumping jacks, 5 burpees, or 30 seconds of dancing. Let your body get activated and energized.",
+            "education": "Procrastination often reflects low activation. A quick movement burst wakes up your prefrontal cortex, shifts you from 'freeze' to 'go' mode, and makes the task feel more approachable.",
+            "type": "movement"
+        },
         None: {
             "title": "The 5-Minute Sprint",
             "task": "Pick the smallest sub-task and do it for exactly 5 minutes. You can stop after that.",
@@ -62,6 +68,12 @@ INTERVENTIONS = {
             },
             "type": "grounding"
         },
+        "movement": {
+            "title": "Vigorous Physical Discharge",
+            "task": "Do 2 minutes of intense movement: jumping jacks, dancing, stair climbing, or running in place. Move until you feel your nervous system shift.",
+            "education": "Anxiety is trapped activation. Vigorous movement channels nervous energy into productive physical exertion, allowing your body to complete its threat-response cycle and downshift.",
+            "type": "movement"
+        },
         None: {
             "title": "5-4-3-2-1 Grounding",
             "task": "Name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you can taste.",
@@ -83,6 +95,12 @@ INTERVENTIONS = {
                 "deepen": "Burnout is parasympathetic exhaustion—your vagal tone (ability to engage parasympathetic) has dropped. Complete rest allows your PNS to rebuild its capacity. The 10-minute window is long enough for parasympathetic rebound without rumination."
             },
             "type": "breathing"
+        },
+        "movement": {
+            "title": "Cortisol Discharge Walk",
+            "task": "Take a 10-minute walk at a steady, slightly elevated pace. Focus on feeling your feet connect with the ground with each step.",
+            "education": "Stress elevates cortisol. Rhythmic movement (especially walking) is one of the fastest ways to metabolize cortisol and activate your parasympathetic nervous system.",
+            "type": "movement"
         },
         None: {
             "title": "Physiological Sigh",
@@ -147,6 +165,12 @@ INTERVENTIONS = {
                 "deepen": "Overwhelm activates your dorsolateral prefrontal cortex at maximum capacity. Cognitive overload triggers default mode network takeover (rumination/shutdown). The 2-minute task resets your attentional resources, allowing prefrontal cortex to re-engage."
             },
             "type": "cognitive"
+        },
+        "movement": {
+            "title": "Tension Release Shake",
+            "task": "Stand up. Vigorously shake out your entire body—arms, legs, torso—for 30 seconds. Then take 5 slow breaths.",
+            "education": "Overwhelm locks your nervous system in place. Vigorous shaking physically releases stored tension, breaks the freeze response, and restores your sense of agency.",
+            "type": "movement"
         },
         None: {
             "title": "Brain Dump",

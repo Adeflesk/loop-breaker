@@ -48,8 +48,9 @@ class _FakeDBManager:
         title: str,
         task: str,
         sublabel: str = "General",
+        intervention_type: str = "other",
     ):
-        self.logged.append((node_name, sublabel, confidence, title, task))
+        self.logged.append((node_name, sublabel, confidence, title, task, intervention_type))
         self.node_history.append(node_name)
         return "Low", False
 
@@ -67,6 +68,16 @@ class _FakeDBManager:
 
     def increment_intervention_seen_count(self, title: str):
         pass
+
+    def analyze_loop_path(self, days: int = 30):
+        return {
+            "most_common_entry": "Stress",
+            "cycle_length_hours": 4.5,
+            "where_in_cycle": "early"
+        }
+
+    def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+        return {}
 
     def close(self):
         pass
@@ -88,6 +99,10 @@ def _patch_dependencies(monkeypatch):
     # Override the DB dependency with a fake in-memory implementation
     fake_db = _FakeDBManager()
     app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
+
+    # Initialize crisis service for the app
+    from app.crisis import CrisisSafetyService
+    app_main.app.state.crisis_service = CrisisSafetyService()
 
     yield fake_db
 

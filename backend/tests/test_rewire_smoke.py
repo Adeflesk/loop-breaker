@@ -41,6 +41,7 @@ class _FakeDBManager:
         title: str,
         task: str,
         sublabel: str = "General",
+        intervention_type: str = "other",
     ):
         # Record entry in history
         from datetime import datetime, UTC
@@ -51,8 +52,8 @@ class _FakeDBManager:
             "confidence": confidence,
             "was_successful": None,  # Not yet resolved
         })
-        
-        self.logged.append((node_name, sublabel, confidence, title, task))
+
+        self.logged.append((node_name, sublabel, confidence, title, task, intervention_type))
         self.node_history.append(node_name)
         recent = self.node_history[-3:]
         is_loop = len(recent) == 3 and len(set(recent)) == 1
