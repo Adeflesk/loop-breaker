@@ -82,6 +82,22 @@ class _FakeDBManager:
         self._history = []
         return True
 
+    def analyze_loop_path(self, days: int = 30):
+        """Return mock personal loop context."""
+        return {
+            "most_common_entry": "Stress",
+            "cycle_length_hours": 4.5,
+            "where_in_cycle": "early"
+        }
+
+    def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+        """Return mock intervention effectiveness data."""
+        return {}
+
+    def save_journal_entry(self, entry_id: str, raw_text: str, detected_state: str, sublabel: str, confidence: float, reasoning: str, risk_level: str, intervention_title: str, intervention_type: str, crisis_audit_id: str = None) -> bool:
+        """Mock journal entry saving."""
+        return True
+
     def close(self):
         pass
 
