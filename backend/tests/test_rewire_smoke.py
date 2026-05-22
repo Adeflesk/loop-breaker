@@ -41,6 +41,7 @@ class _FakeDBManager:
         title: str,
         task: str,
         sublabel: str = "General",
+        intervention_type: str = "other",
     ):
         # Record entry in history
         from datetime import datetime, UTC
