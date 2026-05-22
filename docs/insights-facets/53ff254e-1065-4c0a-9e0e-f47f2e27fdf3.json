@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Invoke the brainstorming skill to collaboratively design the next feature for the Travel Planner app",
+  "goal_categories": {
+    "brainstorming_session": 1
+  },
+  "outcome": "partially_achieved",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "moderately_helpful",
+  "session_type": "exploration",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "proactive_help",
+  "brief_summary": "User invoked a brainstorming skill for their Travel Planner project; Claude explored the project context and prompted for the next idea, but the session appears to end before substantive brainstorming occurred.",
+  "session_id": "53ff254e-1065-4c0a-9e0e-f47f2e27fdf3"
+}

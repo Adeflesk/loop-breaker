@@ -1,0 +1,9 @@
+[run]
+source = app
+omit =
+    */venv/*
+    */tests/*
+    */__pycache__/*
+
+[report]
+show_missing = True

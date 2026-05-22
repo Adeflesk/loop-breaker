@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Create a pull request for a feature branch in the Travel Planner project",
+  "goal_categories": {
+    "create_pr": 1
+  },
+  "outcome": "fully_achieved",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "very_helpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "correct_code_edits",
+  "brief_summary": "User requested a PR creation and Claude successfully created PR #33 with 6 commits, passing tests, and clean lint.",
+  "session_id": "83393eb3-2a19-4449-9b47-17aeb5b67e4a"
+}

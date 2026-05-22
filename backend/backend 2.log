@@ -1,0 +1,10 @@
+2026-02-13 12:15:42,136 [app.db] INFO: Neo4j connection established on attempt 1
+2026-02-13 12:15:42,210 [httpx] INFO: HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+2026-02-13 12:15:42,211 [app.main] INFO: AI Ready: Model 'llama3.2:1b' is loaded.
+2026-02-13 12:16:55,533 [app.db] INFO: Neo4j connection established on attempt 1
+2026-02-13 12:16:55,615 [httpx] INFO: HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+2026-02-13 12:16:55,616 [app.main] INFO: AI Ready: Model 'llama3.2:1b' is loaded.
+2026-02-13 12:31:22,525 [app.db] INFO: Neo4j connection established on attempt 1
+2026-02-13 12:31:22,610 [httpx] INFO: HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+2026-02-13 12:31:22,611 [app.main] INFO: AI Ready: Model 'llama3.2:1b' is loaded.
+2026-02-13 13:02:55,328 [app.main] INFO: Database connection closed.

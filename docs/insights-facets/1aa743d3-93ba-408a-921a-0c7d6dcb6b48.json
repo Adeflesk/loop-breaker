@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue a brainstorming session for a Travel Planner project that ran out of context",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "unclear_from_transcript",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "unhelpful",
+  "session_type": "exploration",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "none",
+  "brief_summary": "User attempted to continue a brainstorming session from a previous conversation but the session only contained a context summary and a compact command with no actual work done.",
+  "session_id": "1aa743d3-93ba-408a-921a-0c7d6dcb6b48"
+}

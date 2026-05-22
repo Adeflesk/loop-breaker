@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue a previous session about Travel Planner development, specifically around timezone fields in journey segments",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "unclear_from_transcript",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "unhelpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "none",
+  "brief_summary": "Session was a continuation from a previous conversation but only contained a compaction command with no actual work performed.",
+  "session_id": "c58e7dc4-2162-4744-bb8d-badf17aad542"
+}

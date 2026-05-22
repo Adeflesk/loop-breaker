@@ -1,0 +1,21 @@
+{
+  "underlying_goal": "Review the app against design documents, fix Belfast search bug, and implement wizard simplification as specified in the design spec",
+  "goal_categories": {
+    "bug_fix": 1,
+    "feature_implementation": 1,
+    "code_review": 1
+  },
+  "outcome": "mostly_achieved",
+  "user_satisfaction_counts": {
+    "likely_satisfied": 1
+  },
+  "claude_helpfulness": "very_helpful",
+  "session_type": "multi_task",
+  "friction_counts": {
+    "buggy_code": 1
+  },
+  "friction_detail": "Removing accommodation/pacing fields from WizardData interface broke types, requiring them to be re-added.",
+  "primary_success": "multi_file_changes",
+  "brief_summary": "User wanted a design doc review, Belfast search fix, and wizard simplification; Claude fixed the search bug and implemented the wizard changes with one type error that was quickly corrected.",
+  "session_id": "842906bf-5ac6-49ec-8201-04c470fd0ea1"
+}

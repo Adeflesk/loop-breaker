@@ -1,0 +1,17 @@
+{
+  "underlying_goal": "Continue debugging 3 failing e2e tests on the feature/road-trip-builder branch",
+  "goal_categories": {
+    "debugging": 1
+  },
+  "outcome": "not_achieved",
+  "user_satisfaction_counts": {
+    "frustrated": 1
+  },
+  "claude_helpfulness": "unhelpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "Claude hit rate limits repeatedly and could not perform any meaningful work during the session.",
+  "primary_success": "none",
+  "brief_summary": "User wanted to continue debugging failing e2e tests but Claude was blocked by rate limits and accomplished nothing.",
+  "session_id": "1bda4d4e-e537-443f-a074-2e38f3d8ab89"
+}

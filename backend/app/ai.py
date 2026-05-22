@@ -11,34 +11,53 @@ logger = logging.getLogger(__name__)
 
 VALID_NODES = list(INTERVENTIONS.keys())
 DEFAULT_NODE = "Stress"
-DEFAULT_SUBLABEL = "General"
+DEFAULT_SUBLABEL = "unspecified"
 
 SYSTEM_PROMPT = """
-Classify this journal entry into ONE emotional state.
+You are a Behavioral Science Specialist in LoopBreaker.
 
-VALID STATES (choose exactly one):
-Procrastination, Anxiety, Stress, Shame, Overwhelm, Numbness, Isolation
+THE 8-NODE REWIRE FEEDBACK LOOP (context for understanding):
+1. STRESS — Physiological spikes and overwhelm
+2. COPING STRUGGLE — Decreased executive function, difficulty regulating
+3. PROCRASTINATION — Avoidance and task delay behaviors
+4. NEGLECT NEEDS — Ignoring sleep, food, movement, social connection
+5. HYPERVIGILANCE — Heightened sensitivity, anxiety, defensive scanning
+6. NEGATIVE BELIEFS — Distorted self-talk, rumination, catastrophizing
+7. LOW SELF-ESTEEM — Degraded self-worth, internalized criticism
+8. SHAME — Isolation, worthlessness, loop restart condition
 
-SUBLABELS BY STATE:
-- Procrastination: Avoidance, Perfectionism, Fear of Failure
-- Anxiety: Worry, Panic, Dread
-- Stress: Overwhelmed, Anxious, Burnt-out
-- Shame: Guilt, Embarrassment, Self-blame
-- Overwhelm: Paralysis, Cognitive Overload, Scattered
-- Numbness: Disconnected, Apathy, Exhaustion
-- Isolation: Loneliness, Withdrawal, Avoidance of Others
+YOUR TASK:
+Classify the user's journal entry into ONE of these 7 emotional states:
+- Procrastination (avoidance, distraction, fear of failure)
+- Anxiety (worry, panic, dread, hypervigilance)
+- Stress (overload, tension, urgency, burnout)
+- Shame (guilt, embarrassment, self-blame, isolation)
+- Overwhelm (paralysis, cognitive overload, scattered)
+- Numbness (disconnected, apathy, exhaustion, freeze)
+- Isolation (loneliness, withdrawal, avoidance of others)
+
+Also extract a specific emotion sublabel and confidence.
 
 Return ONLY this JSON format:
 {"node": "StateName", "sublabel": "SubLabel", "confidence": 0.8, "reasoning": "brief explanation"}
 
+SUBLABELS BY STATE:
+- Procrastination: Avoidance, Perfectionism, Fear of Failure
+- Anxiety: Worry, Panic, Dread, Hypervigilance
+- Stress: Overload, Tension, Urgency, Burnout
+- Shame: Guilt, Embarrassment, Self-Blame, Isolation
+- Overwhelm: Paralysis, Cognitive Overload, Scattered
+- Numbness: Disconnected, Apathy, Exhaustion, Freeze
+- Isolation: Loneliness, Withdrawal, Avoidance of Others
+
 EXAMPLES:
 "I can't start my work" → {"node": "Procrastination", "sublabel": "Avoidance", "confidence": 0.9, "reasoning": "avoiding task initiation"}
 "Everything feels threatening" → {"node": "Anxiety", "sublabel": "Dread", "confidence": 0.85, "reasoning": "pervasive anticipatory fear"}
-"I'm behind on deadlines" → {"node": "Stress", "sublabel": "Overwhelmed", "confidence": 0.9, "reasoning": "time pressure and workload"}
-"I feel terrible about myself" → {"node": "Shame", "sublabel": "Self-blame", "confidence": 0.85, "reasoning": "self-directed criticism"}
+"I'm behind on deadlines" → {"node": "Stress", "sublabel": "Overload", "confidence": 0.9, "reasoning": "time pressure and workload"}
+"I feel terrible about myself" → {"node": "Shame", "sublabel": "Self-Blame", "confidence": 0.85, "reasoning": "self-directed criticism"}
 "Too many things at once" → {"node": "Overwhelm", "sublabel": "Cognitive Overload", "confidence": 0.9, "reasoning": "mental capacity exceeded"}
 "I don't feel anything" → {"node": "Numbness", "sublabel": "Disconnected", "confidence": 0.85, "reasoning": "emotional blunting present"}
-"I don't want to see anyone" → {"node": "Isolation", "sublabel": "Withdrawal", "confidence": 0.9, "reasoning": "social avoidance pattern"}
+"I don't want to see anyone" → {"node": "Isolation", "sublabel": "Isolation", "confidence": 0.9, "reasoning": "social avoidance pattern"}
 """
 
 
@@ -46,7 +65,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     try:
         data = json.loads(raw_json)
     except json.JSONDecodeError as e:
-        logger.warning(f"AI returned invalid JSON: {raw_json[:200]} | Error: {e}")
+        logger.warning(
+            "AI returned invalid JSON",
+            extra={"event": "ai_json_error", "snippet": raw_json[:200], "error": str(e)},
+        )
         return {
             "detected_node": DEFAULT_NODE,
             "emotion_sublabel": DEFAULT_SUBLABEL,
@@ -60,7 +82,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     confidence = data.get("confidence", 0.5)
 
     # Log what AI actually returned before validation
-    logger.info(f"AI raw response: node={node}, sublabel={sublabel}, confidence={confidence}")
+    logger.info(
+        "AI raw response",
+        extra={"event": "ai_raw_response", "node": node, "sublabel": sublabel, "confidence": confidence},
+    )
 
     try:
         confidence_value = float(confidence)
@@ -70,7 +95,10 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
     confidence_value = max(0.0, min(1.0, confidence_value))
 
     if node not in VALID_NODES:
-        logger.warning(f"AI returned invalid node '{node}'. Valid nodes: {VALID_NODES}. Defaulting to {DEFAULT_NODE}")
+        logger.warning(
+            "AI returned invalid node",
+            extra={"event": "ai_invalid_node", "node": node, "valid_nodes": VALID_NODES},
+        )
         node = DEFAULT_NODE
         sublabel = DEFAULT_SUBLABEL
 
@@ -84,17 +112,20 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
         "reasoning": str(reasoning),
     }
 
-async def query_local_ai(text: str) -> Dict[str, Any]:
+async def query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
         f"Journal entry: \"{text}\"\n\n"
         "JSON response:"
     )
 
-    model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+    model = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-    logger.info(f"Querying Ollama with model={model}, text_length={len(text)}")
+    logger.info(
+        "AI request",
+        extra={"event": "ai_query", "model": model, "text_length": len(text), "request_id": request_id},
+    )
 
     try:
         async with httpx.AsyncClient() as client:
@@ -109,10 +140,14 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
                 timeout=30,
             )
 
+        response.raise_for_status()
         raw_data = response.json()
 
         if "response" not in raw_data:
-            logger.warning("Ollama unexpected format: %s", raw_data)
+            logger.warning(
+                "Ollama unexpected format",
+                extra={"event": "ai_response_format", "raw_data": raw_data, "request_id": request_id},
+            )
             return {
                 "detected_node": DEFAULT_NODE,
                 "emotion_sublabel": DEFAULT_SUBLABEL,
@@ -121,15 +156,25 @@ async def query_local_ai(text: str) -> Dict[str, Any]:
             }
 
         ai_response = raw_data["response"]
-        logger.info(f"Ollama raw response: {ai_response[:300]}")  # Log first 300 chars
+        logger.info(
+            "Ollama raw response",
+            extra={"event": "ai_response", "snippet": ai_response[:300], "request_id": request_id},
+        )
         
         return clean_ai_response(ai_response)
 
+    except httpx.HTTPStatusError as exc:
+        logger.error(
+            "Ollama service returned non-200 status",
+            exc_info=True,
+            extra={"event": "ai_http_status_error", "status_code": exc.response.status_code, "request_id": request_id},
+        )
     except Exception:
-        logger.error("AI client error", exc_info=True)
-        return {
-            "detected_node": DEFAULT_NODE,
-            "emotion_sublabel": DEFAULT_SUBLABEL,
-            "confidence": 0.5,
-            "reasoning": "AI service unavailable.",
-        }
+        logger.error("AI client error", exc_info=True, extra={"event": "ai_generic_error", "request_id": request_id})
+
+    return {
+        "detected_node": DEFAULT_NODE,
+        "emotion_sublabel": DEFAULT_SUBLABEL,
+        "confidence": 0.5,
+        "reasoning": "AI service unavailable.",
+    }

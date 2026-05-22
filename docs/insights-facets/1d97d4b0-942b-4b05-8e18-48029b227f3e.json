@@ -1,0 +1,16 @@
+{
+  "underlying_goal": "Get an expert review of an expense architecture document and understand if it should be the top priority",
+  "goal_categories": {
+    "architecture_review": 1,
+    "prioritization_advice": 1
+  },
+  "outcome": "mostly_achieved",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "very_helpful",
+  "session_type": "exploration",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "good_explanations",
+  "brief_summary": "User asked Claude to review an expense architecture doc and assess its priority; Claude provided an honest assessment with context from the codebase.",
+  "session_id": "1d97d4b0-942b-4b05-8e18-48029b227f3e"
+}

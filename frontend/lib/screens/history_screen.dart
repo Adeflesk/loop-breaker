@@ -2,12 +2,29 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
+import '../widgets/expandable_history_entry.dart';
+import '../widgets/loop_path_chart.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  Future<List<dynamic>> fetchHistory() async {
-    return ApiClient.fetchHistory();
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  late Future<List<dynamic>> _historyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _historyFuture = ApiClient.fetchHistory();
+  }
+
+  void _refreshHistory() {
+    setState(() {
+      _historyFuture = ApiClient.fetchHistory();
+    });
   }
 
   @override
@@ -15,13 +32,37 @@ class HistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Journey Dashboard')),
       body: FutureBuilder<List<dynamic>>(
-        future: fetchHistory(),
+        future: _historyFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return _buildErrorState('Could not load your journey. Pull to refresh.');
+          }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No data yet.'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_graph_outlined, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No entries yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Journal your first entry to see your dashboard',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            );
           }
 
           final data = snapshot.data!;
@@ -36,33 +77,48 @@ class HistoryScreen extends StatelessWidget {
                   data.length
               : 0.0;
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _historyFuture = ApiClient.fetchHistory(useCache: false);
+              });
+              await _historyFuture;
+            },
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 child: Row(
                   children: [
-                    _buildStatCard('Entries', totalEntries.toString(), Colors.blue),
+                    _buildStatCard('Entries', totalEntries.toString(), const Color(0xFF5B9B96)),
+                    const SizedBox(width: 12),
                     _buildStatCard(
                       'Loops Broken',
                       loopsBroken.toString(),
-                      Colors.orange,
+                      const Color(0xFFD89E6F),
                     ),
+                    const SizedBox(width: 12),
                     _buildStatCard(
                       'Avg Focus',
                       '${(avgConfidence * 100).toStringAsFixed(0)}%',
-                      Colors.green,
+                      const Color(0xFF8B7355),
                     ),
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Emotional Composition',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
@@ -88,85 +144,163 @@ class HistoryScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                height: 150,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: data
-                            .asMap()
-                            .entries
-                            .map(
-                              (e) => FlSpot(
-                                e.key.toDouble(),
-                                (e.value['confidence'] as num?)?.toDouble() ??
-                                    0.0,
-                              ),
-                            )
-                            .toList(),
-                        isCurved: true,
-                        color: Colors.deepPurple,
-                        barWidth: 3,
-                        dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: Colors.deepPurple.withOpacity(0.1),
-                        ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Container(
+                  height: 150,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
+                  child: LineChart(
+                    LineChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: const FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: data
+                              .asMap()
+                              .entries
+                              .map(
+                                (e) => FlSpot(
+                                  e.key.toDouble(),
+                                  (e.value['confidence'] as num?)?.toDouble() ??
+                                      0.0,
+                                ),
+                              )
+                              .toList(),
+                          isCurved: true,
+                          color: const Color(0xFF5B9B96),
+                          barWidth: 2.5,
+                          dotData: const FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: const Color(0xFF5B9B96).withOpacity(0.08),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const Divider(),
-              Expanded(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Recent Entries',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: data.length,
                   itemBuilder: (context, index) {
-                    final item = data[index];
-                    final bool isLoop = item['intervention'] != 'None';
-                    return ListTile(
-                      leading: Icon(
-                        item['was_successful'] == true
-                            ? Icons.verified
-                            : Icons.circle,
-                        color: item['was_successful'] == true
-                            ? Colors.green
-                            : Colors.grey,
-                      ),
-                      title: Text(item['state'] ?? 'Unknown'),
-                      subtitle: Text(
-                        isLoop
-                            ? 'Intervention: ${item['intervention']}'
-                            : 'Healthy State',
-                      ),
-                      trailing: Text(
-                        item['time'].toString().substring(11, 16),
-                      ),
+                    return ExpandableHistoryEntry(
+                      item: data[index],
+                      onExpanded: () {},
                     );
                   },
                 ),
               ),
+              // Loop Path Section
+              const SizedBox(height: 16),
               Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: OutlinedButton.icon(
-                  onPressed: () => _resetData(context),
-                  icon: const Icon(Icons.delete_sweep, color: Colors.red),
-                  label: const Text(
-                    'Reset Journey Data',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Your Loop Pattern',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ),
-            ],
+              FutureBuilder<Map<String, dynamic>>(
+                future: ApiClient.getLoopPath(days: 30),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final pathData = snapshot.data!;
+                  final path = pathData['path'] as List? ?? [];
+                  final analysis = pathData['analysis'] as Map? ?? {};
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LoopPathChart(
+                        path: path,
+                        mostCommonEntry: analysis['most_common_entry'] as String?,
+                      ),
+                      if (analysis['most_common_entry'] != null &&
+                          analysis['cycle_length_hours'] != null)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Most common entry: ${analysis['most_common_entry']} (repeats every ${analysis['cycle_length_hours']}h)',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: OutlinedButton.icon(
+                  onPressed: () => _resetData(context),
+                  icon: const Icon(Icons.delete_sweep),
+                  label: const Text('Reset Journey Data'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFC16B4B),
+                    side: const BorderSide(
+                      color: Color(0xFFC16B4B),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+              ],
+              ),
+            ),
           );
         },
       ),
@@ -175,24 +309,52 @@ class HistoryScreen extends StatelessWidget {
 
   Widget _buildStatCard(String label, String value, Color color) {
     return Expanded(
-      child: Card(
-        elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withOpacity(0.15),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
           child: Column(
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                    letterSpacing: -0.5,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -200,27 +362,84 @@ class HistoryScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildTrendChart(Map<String, double> data) {
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 4,
-          centerSpaceRadius: 40,
-          sections: data.entries.map((entry) {
-            return PieChartSectionData(
-              color: _getColorForState(entry.key),
-              value: entry.value,
-              title: '${entry.value.toInt()}',
-              radius: 50,
-              titleStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 45,
+                  sections: data.entries.map((entry) {
+                    return PieChartSectionData(
+                      color: _getColorForState(entry.key),
+                      value: entry.value,
+                      title: '${entry.value.toInt()}',
+                      radius: 60,
+                      titleStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 2,
+                            color: Colors.black26,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-            );
-          }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: data.entries.map((entry) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _getColorForState(entry.key),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      entry.key,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
     );
@@ -229,55 +448,80 @@ class HistoryScreen extends StatelessWidget {
   Color _getColorForState(String state) {
     switch (state) {
       case 'Stress':
-        return Colors.redAccent;
+        return const Color(0xFFC16B4B);  // Warm terracotta red
       case 'Anxiety':
-        return Colors.orangeAccent;
+        return const Color(0xFFD89E6F);  // Clay orange
       case 'Procrastination':
-        return Colors.purpleAccent;
+        return const Color(0xFF8B7355);  // Warm brown
       case 'Shame':
-        return Colors.blueGrey;
+        return const Color(0xFF5B9B96);  // Sage teal
       default:
-        return Colors.blueAccent;
+        return const Color(0xFF6B9A92);  // Muted teal
     }
-  }}
+  }
 
-Future<void> _resetData(BuildContext context) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Reset All Data?'),
-      content: const Text(
-        'This will permanently delete your history and broken loops. '
-        'This cannot be undone.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+  Future<void> _resetData(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset All Data?'),
+        content: const Text(
+          'This will permanently delete your history and broken loops. '
+          'This cannot be undone.',
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text(
-            'Reset',
-            style: TextStyle(color: Colors.red),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ),
-      ],
-    ),
-  );
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Reset',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
 
-  if (confirm == true) {
-    try {
-      final success = await ApiClient.resetData();
-      if (success) {
-        (context as Element).reassemble();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database Wiped')),
-        );
+    if (confirm == true) {
+      try {
+        final success = await ApiClient.resetData();
+        if (context.mounted) {
+          if (success) {
+            _refreshHistory();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Database Wiped')),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Reset error: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reset failed. Please try again.')),
+          );
+        }
       }
-    } catch (e) {
-      debugPrint('Reset error: $e');
     }
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off_outlined, size: 48, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
   }
 }
 

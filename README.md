@@ -94,6 +94,18 @@ Environment: Use venv in /backend for Python dependencies.
 
 Flutter: Use flutter doctor to ensure the ARM64 toolchain is healthy.
 
+✨ Personalized Education
+
+Every intervention is tailored to the user's personal behavioral patterns and history:
+
+- **Your Loop Pattern** — Shows your detected emotional cycle (e.g., "Stress → Procrastination → Shame repeats every 4.5 hours")
+- **Your Track Record** — Displays effectiveness of each intervention you've tried (e.g., "5-Minute Sprint: 80% effective")
+- **Personalized Teaching** — Education text references your specific situation (e.g., "For YOUR Procrastination...")
+
+The feature gracefully appears only when sufficient journal data is available, ensuring new users don't see incomplete information.
+
+[View Complete Feature Documentation →](docs/FEATURE-PERSONALIZED-EDUCATION-COMPLETE.md)
+
 🛡 Privacy & Ethics
 Zero-Cloud AI: All sentiment analysis stays on-device via Ollama.
 

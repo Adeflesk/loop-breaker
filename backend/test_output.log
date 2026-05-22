@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.2, pluggy-1.6.0 -- /Users/adriancorsini/Documents/playground/loop-breaker/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/adriancorsini/Documents/playground/loop-breaker/backend
+plugins: anyio-4.12.1, cov-7.0.0
+collecting ... collected 19 items
+
+tests/test_api.py::test_analyze_endpoint PASSED                          [  5%]
+tests/test_api.py::test_history_endpoint PASSED                          [ 10%]
+tests/test_api.py::test_feedback_with_halt_results PASSED                [ 15%]
+tests/test_api.py::test_feedback_with_needs_check_compatibility PASSED   [ 21%]
+tests/test_api.py::test_insight_endpoint PASSED                          [ 26%]
+tests/test_api.py::test_insight_trend_logic PASSED                       [ 31%]
+tests/test_api.py::test_reset_endpoint PASSED                            [ 36%]
+tests/test_api.py::test_reset_rejected_without_header PASSED             [ 42%]
+tests/test_api.py::test_chronic_loop_detection PASSED                    [ 47%]
+tests/test_api.py::test_intervention_resets_loop PASSED                  [ 52%]
+tests/test_db_cleanup.py::test_cleanup_stale_interventions_marks_old_as_skipped PASSED [ 57%]
+tests/test_db_cleanup.py::test_cleanup_with_different_time_thresholds PASSED [ 63%]
+tests/test_db_cleanup.py::test_cleanup_skips_when_db_unavailable PASSED  [ 68%]
+tests/test_db_cleanup.py::test_resolve_intervention_calls_cleanup PASSED [ 73%]
+tests/test_db_cleanup.py::test_cleanup_logs_count_of_cleaned_interventions PASSED [ 78%]
+tests/test_db_cleanup.py::test_cleanup_handles_exceptions_gracefully PASSED [ 84%]
+tests/test_db_cleanup.py::test_cleanup_creates_outcome_with_system_note PASSED [ 89%]
+tests/test_db_cleanup.py::test_get_ai_insight_excludes_skipped_from_success_rate PASSED [ 94%]
+tests/test_db_cleanup.py::test_get_ai_insight_coaching_message_for_frequent_skips PASSED [100%]
+
+============================= 19 passed in 13.42s ==============================

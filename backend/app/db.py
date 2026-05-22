@@ -76,13 +76,14 @@ class BehavioralStateManager:
                 # 1. Record Entry
                 session.run("""
                     MATCH (n:Node {name: $name})
-                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf, emotion_sublabel: $sublabel})
+                    CREATE (e:Entry {timestamp: datetime(), confidence: $conf, emotion_sublabel: $sublabel, loop_broken: false})
                     CREATE (e)-[:RECORDS_STATE]->(n)
                 """, name=node_name, conf=confidence, sublabel=sublabel)
 
                 # 2. Check for Loop
                 result = session.run("""
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
+                    WHERE NOT (COALESCE(e.loop_broken, false) = true)
                     RETURN n.name as name
                     ORDER BY e.timestamp DESC LIMIT 3
                 """)
@@ -156,6 +157,7 @@ class BehavioralStateManager:
                     WITH i ORDER BY i.timestamp DESC LIMIT 1
                     CREATE (o:Outcome {
                         success: $success,
+                        skipped: false,
                         timestamp: datetime(),
                         hydration: $hydration,
                         fuel: $fuel,
@@ -170,10 +172,39 @@ class BehavioralStateManager:
                 rest=needs.get("rest"),
                 movement=needs.get("movement"),
                 )
+                
+                # If intervention was successful, reset the loop history
+                # to allow fresh start and prevent overaggressively tagging recurring patterns
+                if was_successful:
+                    session.run("""
+                        MATCH (e:Entry)
+                        WHERE NOT (e)-[:HAS_INTERVENTION]->()
+                        WITH e ORDER BY e.timestamp DESC LIMIT 10
+                        SET e.loop_broken = true
+                    """)
+                    logger.info("Loop history marked as reset after successful intervention")
             self.is_available = True
         except Exception:
             self.is_available = False
             logger.error("DB resolve_intervention error", exc_info=True)
+
+    def increment_intervention_seen_count(self, intervention_title: str) -> None:
+        """Increment seen_count for an intervention.
+
+        Called after intervention is returned in /analyze to track exposure.
+        Gracefully handles DB unavailability.
+        """
+        if not self.is_available:
+            return
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    MATCH (i:Intervention {title: $title})
+                    SET i.seen_count = COALESCE(i.seen_count, 0) + 1
+                """, title=intervention_title)
+        except Exception:
+            logger.error("DB increment seen_count error", exc_info=True)
+            # Non-critical; do not propagate
 
     def get_history(self) -> List[Dict[str, Any]]:
         """Fetches the last 20 entries for the Dashboard."""
@@ -219,10 +250,10 @@ class BehavioralStateManager:
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
                     OPTIONAL MATCH (e)-[:HAS_INTERVENTION]->(i:Intervention)
                     OPTIONAL MATCH (i)-[:HAS_OUTCOME]->(o:Outcome)
-                    WITH n.name AS state, 
-                         count(i) AS loop_count, 
+                    WITH n.name AS state,
+                         count(i) AS loop_count,
                          sum(CASE WHEN o.success = true THEN 1 ELSE 0 END) AS successes,
-                         sum(CASE WHEN o.skipped = true THEN 1 ELSE 0 END) AS skipped
+                         sum(CASE WHEN COALESCE(o.skipped, false) = true THEN 1 ELSE 0 END) AS skipped
                     RETURN state, loop_count, successes, skipped
                     ORDER BY loop_count DESC LIMIT 1
                 """)
@@ -307,12 +338,107 @@ class BehavioralStateManager:
             logger.error("DB trend stats error", exc_info=True)
             return {}
 
+    def create_thought_record(
+        self,
+        situation: str,
+        automatic_thought: str,
+        evidence_for: str,
+        evidence_against: str,
+        balanced_thought: str,
+        linked_node: Optional[str] = None,
+    ) -> bool:
+        """Creates a thought record (cognitive restructuring exercise)."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, cannot create thought record")
+            return False
+
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    CREATE (t:ThoughtRecord {
+                        timestamp: datetime(),
+                        situation: $situation,
+                        automatic_thought: $automatic_thought,
+                        evidence_for: $evidence_for,
+                        evidence_against: $evidence_against,
+                        balanced_thought: $balanced_thought,
+                        linked_node: $linked_node
+                    })
+                    """,
+                    situation=situation,
+                    automatic_thought=automatic_thought,
+                    evidence_for=evidence_for,
+                    evidence_against=evidence_against,
+                    balanced_thought=balanced_thought,
+                    linked_node=linked_node,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB thought record creation error", exc_info=True)
+            return False
+
+    def get_thought_records(self, limit: int = 20, offset: int = 0) -> list:
+        """Retrieves thought records with optional pagination."""
+        if not self.is_available:
+            logger.warning("Neo4j unavailable, returning empty thought records")
+            return []
+
+        try:
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (t:ThoughtRecord)
+                    RETURN
+                        t.timestamp as timestamp,
+                        t.situation as situation,
+                        t.automatic_thought as automatic_thought,
+                        t.evidence_for as evidence_for,
+                        t.evidence_against as evidence_against,
+                        t.balanced_thought as balanced_thought,
+                        t.linked_node as linked_node
+                    ORDER BY t.timestamp DESC
+                    SKIP $offset LIMIT $limit
+                    """,
+                    offset=offset,
+                    limit=limit,
+                )
+
+                records = []
+                for record in result:
+                    clean = record.data()
+                    clean["timestamp"] = str(clean.get("timestamp", ""))
+                    records.append(clean)
+                return records
+        except Exception:
+            logger.error("DB thought records retrieval error", exc_info=True)
+            return []
+
+    def get_shame_count_24h(self) -> int:
+        """Returns number of Shame entries in the last 24 hours."""
+        if not self.is_available:
+            return 0
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node {name: 'Shame'})
+                    WHERE e.timestamp > datetime() - duration({hours: 24})
+                    RETURN count(e) as count
+                """)
+                record = result.single()
+                return int(record["count"]) if record else 0
+        except Exception:
+            logger.error("DB shame count error", exc_info=True)
+            return 0
+
     def reset_all_data(self) -> bool:
         """Wipes user data while keeping Node labels."""
         if not self.is_available:
             logger.warning("Neo4j unavailable, cannot reset data")
             return False
-            
+
         try:
             with self.driver.session() as session:
                 session.run("MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome DETACH DELETE n")
@@ -321,6 +447,387 @@ class BehavioralStateManager:
         except Exception:
             self.is_available = False
             logger.error("DB reset error", exc_info=True)
+            return False
+
+    def get_loop_path(self, days: int = 30) -> List[Dict[str, Any]]:
+        """
+        Returns list of entries in chronological order with their states.
+        Used to compute loop sequences and patterns over the past N days.
+        """
+        if not self.is_available:
+            return []
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
+                    WHERE e.timestamp > datetime() - duration({days: $days})
+                    RETURN
+                        e.timestamp as timestamp,
+                        n.name as state,
+                        e.confidence as confidence,
+                        CASE WHEN (e)-[:HAS_INTERVENTION]->() THEN true ELSE false END as has_intervention
+                    ORDER BY e.timestamp ASC
+                """, days=days)
+
+                path = []
+                for record in result:
+                    path.append({
+                        "timestamp": str(record["timestamp"]),
+                        "state": record["state"],
+                        "confidence": float(record["confidence"]) if record["confidence"] else 0.0,
+                        "has_intervention": bool(record["has_intervention"]),
+                    })
+                self.is_available = True
+                return path
+        except Exception:
+            logger.error("DB loop path error", exc_info=True)
+            return []
+
+    def analyze_loop_path(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Analyze personal loop patterns: entry point, cycle length, transitions.
+
+        Returns:
+            {
+                "most_common_entry": "Stress",
+                "cycle_length_hours": 4.5,
+                "total_cycles": 12,
+            }
+        """
+        if not self.is_available:
+            return {}
+
+        path = self.get_loop_path(days=days)
+        if not path:
+            return {}
+
+        from datetime import datetime, timedelta
+
+        # Find most common starting state (first state in each "cycle")
+        # Heuristic: gap > 6 hours = new cycle
+        entry_counts = {}
+        current_cycle_start = None
+        last_timestamp = None
+
+        for entry in path:
+            ts = entry["timestamp"]
+            if last_timestamp:
+                time_diff = (
+                    datetime.fromisoformat(ts) - datetime.fromisoformat(last_timestamp)
+                ).total_seconds() / 3600
+                if time_diff > 6:
+                    current_cycle_start = entry["state"]
+            else:
+                current_cycle_start = entry["state"]
+
+            if current_cycle_start:
+                entry_counts[current_cycle_start] = entry_counts.get(current_cycle_start, 0) + 1
+            last_timestamp = ts
+
+        most_common_entry = max(entry_counts, key=entry_counts.get) if entry_counts else None
+
+        # Compute average cycle length (time between repeats of most common state)
+        avg_cycle_length = None
+        if most_common_entry:
+            timestamps_of_state = [
+                entry["timestamp"] for entry in path
+                if entry["state"] == most_common_entry
+            ]
+            if len(timestamps_of_state) > 1:
+                time_diffs = []
+                for i in range(1, len(timestamps_of_state)):
+                    diff = (
+                        datetime.fromisoformat(timestamps_of_state[i]) -
+                        datetime.fromisoformat(timestamps_of_state[i-1])
+                    ).total_seconds() / 3600
+                    time_diffs.append(diff)
+                avg_cycle_length = sum(time_diffs) / len(time_diffs) if time_diffs else None
+
+        return {
+            "most_common_entry": most_common_entry,
+            "cycle_length_hours": round(avg_cycle_length, 2) if avg_cycle_length else None,
+            "total_cycles": len(entry_counts),
+        }
+
+    def get_intervention_effectiveness(
+        self,
+        state: str,
+        sublabel: Optional[str] = None,
+        limit: int = 10,
+        min_threshold: int = 3
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Calculate intervention effectiveness for a specific state+sublabel.
+
+        Args:
+            state: Detected emotional state (e.g., "Procrastination")
+            sublabel: Sublabel variant (e.g., "Avoidance")
+            limit: Look at last N entries for this state+sublabel (default 10)
+            min_threshold: Only include interventions used 3+ times (default)
+
+        Returns:
+            {
+                "5-Minute Sprint": {
+                    "helped": 8,
+                    "neutral": 1,
+                    "didn_help": 1,
+                    "total": 10,
+                    "percentage": 80
+                },
+                "Breathing": {
+                    "helped": 2,
+                    "neutral": 0,
+                    "didn_help": 3,
+                    "total": 5,
+                    "percentage": 40
+                }
+            }
+
+        Notes:
+        - Only counts entries where user_outcome is not null
+        - Excludes interventions with < min_threshold uses
+        - Returns empty dict if no data
+        - Gracefully handles Neo4j unavailability
+        """
+        if not self.is_available:
+            return {}
+
+        try:
+            with self.driver.session() as session:
+                # Query journal entries for this state+sublabel with recorded outcomes
+                where_clause = "WHERE j.detected_state = $state AND j.user_outcome IS NOT NULL"
+                params = {"state": state, "limit": limit}
+
+                if sublabel:
+                    where_clause += " AND j.sublabel = $sublabel"
+                    params["sublabel"] = sublabel
+
+                result = session.run(f"""
+                    MATCH (j:JournalEntry)
+                    {where_clause}
+                    RETURN
+                        j.intervention_title as intervention_title,
+                        j.user_outcome as user_outcome
+                    ORDER BY j.timestamp DESC
+                    LIMIT $limit
+                """, params)
+
+                # Aggregate outcomes by intervention
+                intervention_stats = {}
+                for record in result:
+                    intervention = record["intervention_title"]
+                    outcome = record["user_outcome"]
+
+                    if intervention not in intervention_stats:
+                        intervention_stats[intervention] = {
+                            "helped": 0,
+                            "neutral": 0,
+                            "didn_help": 0,
+                            "total": 0
+                        }
+
+                    # Normalize outcome values
+                    if outcome in ["helped", "didn't help", "neutral"]:
+                        # Map "didn't help" to "didn_help" for consistency
+                        outcome_key = "didn_help" if outcome == "didn't help" else outcome
+                        intervention_stats[intervention][outcome_key] += 1
+                        intervention_stats[intervention]["total"] += 1
+
+                # Filter by min_threshold and calculate percentages
+                result_dict = {}
+                for intervention, stats in intervention_stats.items():
+                    if stats["total"] >= min_threshold:
+                        percentage = round(100 * stats["helped"] / stats["total"])
+                        result_dict[intervention] = {
+                            "helped": stats["helped"],
+                            "neutral": stats["neutral"],
+                            "didn_help": stats["didn_help"],
+                            "total": stats["total"],
+                            "percentage": percentage
+                        }
+
+                return result_dict
+        except Exception:
+            logger.error("DB get intervention effectiveness error", exc_info=True)
+            return {}
+
+    def log_crisis_event(
+        self,
+        user_id: str,
+        keywords: List[str],
+        detected_state: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Log crisis event to audit table for clinical review.
+
+        Args:
+            user_id: User's ID (or None for anonymous)
+            keywords: List of detected crisis keywords
+            detected_state: AI-detected emotional state (if available)
+            ip_address: Request IP address for audit trail
+
+        Returns:
+            Crisis event ID (UUID), or None if DB unavailable
+        """
+        if not self.is_available:
+            return None
+
+        try:
+            import uuid
+            from datetime import datetime
+
+            event_id = str(uuid.uuid4())
+            timestamp = datetime.utcnow().isoformat()
+
+            query = """
+            CREATE (c:CrisisEvent {
+                id: $event_id,
+                user_id: $user_id,
+                timestamp: $timestamp,
+                detected_keywords: $keywords,
+                detected_state: $detected_state,
+                ip_address: $ip_address,
+                flagged_for_review: false
+            })
+            RETURN c.id as id
+            """
+
+            with self.driver.session() as session:
+                result = session.run(
+                    query,
+                    {
+                        "event_id": event_id,
+                        "user_id": user_id,
+                        "timestamp": timestamp,
+                        "keywords": keywords,
+                        "detected_state": detected_state,
+                        "ip_address": ip_address,
+                    },
+                )
+                result.consume()
+
+            return event_id
+
+        except Exception as e:
+            logger.warning(
+                "Failed to log crisis event",
+                extra={"event": "crisis_log_failed", "error": str(e)},
+            )
+            return None
+
+    def save_journal_entry(
+        self,
+        entry_id: str,
+        raw_text: str,
+        detected_state: str,
+        sublabel: str,
+        confidence: float,
+        reasoning: str,
+        risk_level: str,
+        intervention_title: str,
+        intervention_type: str,
+        crisis_audit_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Saves the raw journal text and analysis result as a JournalEntry node.
+        Called from /analyze after AI classification. Non-critical — failure
+        does not block the response.
+        """
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    CREATE (j:JournalEntry {
+                        id: $id,
+                        timestamp: datetime(),
+                        raw_text: $raw_text,
+                        detected_state: $state,
+                        sublabel: $sublabel,
+                        confidence: $confidence,
+                        reasoning: $reasoning,
+                        risk_level: $risk_level,
+                        intervention_title: $title,
+                        intervention_type: $itype,
+                        crisis_detected: $crisis_detected,
+                        crisis_audit_id: $crisis_audit_id
+                    })
+                """,
+                    id=entry_id,
+                    raw_text=raw_text,
+                    state=detected_state,
+                    sublabel=sublabel or "",
+                    confidence=confidence,
+                    reasoning=reasoning,
+                    risk_level=risk_level,
+                    title=intervention_title,
+                    itype=intervention_type or "",
+                    crisis_detected=crisis_audit_id is not None,
+                    crisis_audit_id=crisis_audit_id,
+                )
+            return True
+        except Exception:
+            logger.error("DB save journal entry error", exc_info=True)
+            return False
+
+    def get_journal_entries(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Returns saved journal entries in reverse chronological order.
+        """
+        if not self.is_available:
+            return []
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (j:JournalEntry)
+                    RETURN
+                        j.id as id,
+                        j.timestamp as timestamp,
+                        j.raw_text as raw_text,
+                        j.detected_state as detected_state,
+                        j.sublabel as sublabel,
+                        j.confidence as confidence,
+                        j.reasoning as reasoning,
+                        j.risk_level as risk_level,
+                        j.intervention_title as intervention_title,
+                        j.intervention_type as intervention_type,
+                        j.user_outcome as user_outcome,
+                        j.user_notes as user_notes
+                    ORDER BY j.timestamp DESC
+                    LIMIT $limit
+                """, limit=min(limit, 500))
+                entries = []
+                for record in result:
+                    clean = record.data()
+                    clean["timestamp"] = str(clean["timestamp"]) if clean.get("timestamp") else ""
+                    entries.append(clean)
+                return entries
+        except Exception:
+            logger.error("DB get journal entries error", exc_info=True)
+            return []
+
+    def record_journal_outcome(
+        self,
+        entry_id: str,
+        outcome: str,
+        notes: Optional[str] = None,
+    ) -> bool:
+        """
+        Records the user's self-reported outcome on a journal entry.
+        """
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    MATCH (j:JournalEntry {id: $id})
+                    SET j.user_outcome = $outcome,
+                        j.user_notes = $notes
+                """, id=entry_id, outcome=outcome, notes=notes or "")
+            return True
+        except Exception:
+            logger.error("DB record journal outcome error", exc_info=True)
             return False
 
 def create_db_manager() -> BehavioralStateManager:

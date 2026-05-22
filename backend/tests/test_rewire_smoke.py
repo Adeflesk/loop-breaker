@@ -95,7 +95,7 @@ def _patch_dependencies(monkeypatch):
     call_count = {"count": 0}
     
     # Patch AI to simulate progression: stressed -> more stressed -> overwhelmed
-    async def fake_query_local_ai(text: str) -> Dict[str, Any]:
+    async def fake_query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
         call_count["count"] += 1
         
         # First call: moderate stress

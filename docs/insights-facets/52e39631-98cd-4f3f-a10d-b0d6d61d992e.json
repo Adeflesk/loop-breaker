@@ -1,0 +1,15 @@
+{
+  "underlying_goal": "Continue executing a Road Trip Builder plan from a previous session that ran out of context",
+  "goal_categories": {
+    "warmup_minimal": 1
+  },
+  "outcome": "unclear_from_transcript",
+  "user_satisfaction_counts": {},
+  "claude_helpfulness": "slightly_helpful",
+  "session_type": "single_task",
+  "friction_counts": {},
+  "friction_detail": "",
+  "primary_success": "none",
+  "brief_summary": "User continued a previous session for a Road Trip Builder plan but only compacted context with no substantive work visible in this transcript.",
+  "session_id": "52e39631-98cd-4f3f-a10d-b0d6d61d992e"
+}
