@@ -212,6 +212,7 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   void _showStandardInterventionDialog(Map<String, dynamic> data) {
+    _currentInterventionIndex = 0; // Reset to primary intervention on dialog open
     final String nodeDetected = data['detected_node'] ?? 'Unknown';
 
     // Check if this node has variants
