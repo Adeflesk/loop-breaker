@@ -92,6 +92,12 @@ class _JournalScreenState extends State<JournalScreen> {
   String _aiReasoning = '';
   int _currentInterventionIndex = 0;  // Track which variant is showing
 
+  @override
+  void initState() {
+    super.initState();
+    _validateInterventionCatalog();
+  }
+
   Future<void> _analyzeEntry() async {
     if (_controller.text.trim().isEmpty) return;
     setState(() => _isLoading = true);
@@ -362,6 +368,16 @@ class _JournalScreenState extends State<JournalScreen> {
         );
       },
     );
+  }
+
+  // Helper method to validate that all interventions in INTERVENTION_VARIANTS exist in INTERVENTION_CATALOG
+  void _validateInterventionCatalog() {
+    INTERVENTION_VARIANTS.forEach((node, interventions) {
+      for (String title in interventions) {
+        assert(INTERVENTION_CATALOG.containsKey(title),
+            'Missing intervention in catalog: $title (from $node)');
+      }
+    });
   }
 
   // Helper method to look up intervention by title from the class-level catalog
