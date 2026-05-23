@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../screens/history_screen.dart';
 import '../services/api_client.dart';
 import '../widgets/breathing_circle.dart';
+import '../widgets/crisis_safety_dialog.dart';
+import '../services/crisis_safety_service.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -104,6 +106,33 @@ class _JournalScreenState extends State<JournalScreen> {
 
     try {
       final data = await ApiClient.analyzeEntry(_controller.text);
+
+      // CRISIS DETECTION: Check if API returned crisis_detected=true
+      if (data['crisis_detected'] == true) {
+        // Extract crisis resources and keywords
+        final crisisResources = data['crisis_resources'];
+        final List<Map<String, String>> hotlines = [];
+
+        if (crisisResources != null && crisisResources['hotlines'] != null) {
+          for (var hotline in crisisResources['hotlines']) {
+            hotlines.add({
+              'name': hotline['name'] ?? 'Crisis Support',
+              'number': hotline['number'] ?? '',
+              'url': hotline['url'] ?? '',
+              'availability': hotline['availability'] ?? '24/7',
+              'emergency': crisisResources['message'] ?? 'Call 911 for immediate danger',
+            });
+          }
+        }
+
+        // Show crisis dialog
+        _showCrisisDialog(hotlines, data);
+        _controller.clear();
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // NORMAL FLOW: Update status and proceed to intervention
       setState(() {
         final node = data['detected_node'] ?? 'Unknown';
         final sublabel = data['sublabel'] ?? data['emotion_sublabel'] ?? 'General';
@@ -133,6 +162,29 @@ class _JournalScreenState extends State<JournalScreen> {
     } catch (e) {
       debugPrint('Feedback failed: $e');
     }
+  }
+
+  void _showCrisisDialog(
+    List<Map<String, String>> hotlines,
+    Map<String, dynamic> data,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return CrisisSafetyDialog(
+          hotlines: hotlines,
+          onContinue: () {
+            Navigator.pop(context);
+            // After user acknowledges, show intervention dialog
+            _showInterventionDialog(data);
+          },
+          onCancel: () {
+            Navigator.pop(context);
+          },
+        );
+      },
+    );
   }
 
   void _showInterventionDialog(Map<String, dynamic> data) {
