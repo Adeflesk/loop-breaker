@@ -4,7 +4,6 @@ import '../screens/history_screen.dart';
 import '../services/api_client.dart';
 import '../widgets/breathing_circle.dart';
 import '../widgets/crisis_safety_dialog.dart';
-import '../services/crisis_safety_service.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -117,10 +116,11 @@ class _JournalScreenState extends State<JournalScreen> {
           for (var hotline in crisisResources['hotlines']) {
             hotlines.add({
               'name': hotline['name'] ?? 'Crisis Support',
-              'number': hotline['number'] ?? '',
+              'phone': hotline['phone'] ?? '',
+              'text': hotline['text'] ?? '',
               'url': hotline['url'] ?? '',
-              'availability': hotline['availability'] ?? '24/7',
-              'emergency': crisisResources['message'] ?? 'Call 911 for immediate danger',
+              'available': hotline['available'] ?? '24/7',
+              'emergency': crisisResources['emergency'] ?? 'Call 911 for immediate danger',
             });
           }
         }
@@ -137,7 +137,7 @@ class _JournalScreenState extends State<JournalScreen> {
         final node = data['detected_node'] ?? 'Unknown';
         final sublabel = data['sublabel'] ?? data['emotion_sublabel'] ?? 'General';
         _statusMessage = 'Detected: $node ($sublabel)';
-        _riskLevel = data['risk_level'] as String? ?? 'Low';
+        _riskLevel = (data['risk_level'] ?? 'Low') as String;
         _aiReasoning = data['reasoning'] ?? 'Analysis complete.';
       });
 
