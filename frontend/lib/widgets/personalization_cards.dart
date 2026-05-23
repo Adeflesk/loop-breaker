@@ -23,7 +23,6 @@ class LoopPatternCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue.shade200),
       ),
-      constraints: const BoxConstraints(maxWidth: 650),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,6 +33,8 @@ class LoopPatternCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Your Loop Pattern',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -104,7 +105,6 @@ class EffectivenessCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.green.shade200),
       ),
-      constraints: const BoxConstraints(maxWidth: 650),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -116,6 +116,8 @@ class EffectivenessCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Effectiveness Track Record',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,

@@ -382,13 +382,19 @@ class _JournalScreenState extends State<JournalScreen> {
                 // Personalization cards
                 if (data['personal_loop'] != null) ...[
                   const SizedBox(height: 16),
-                  LoopPatternCard(personalLoop: data['personal_loop']),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: LoopPatternCard(personalLoop: data['personal_loop']),
+                  ),
                 ],
                 if (data['intervention_effectiveness'] != null) ...[
                   const SizedBox(height: 16),
-                  EffectivenessCard(
-                    interventionEffectiveness: data['intervention_effectiveness'],
-                    interventionTitle: title,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: EffectivenessCard(
+                      interventionEffectiveness: data['intervention_effectiveness'],
+                      interventionTitle: title,
+                    ),
                   ),
                 ],
               ],
