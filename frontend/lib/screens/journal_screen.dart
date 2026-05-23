@@ -328,69 +328,71 @@ class _JournalScreenState extends State<JournalScreen> {
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                task,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 25),
-              if (isBreathing) const BreathingCircle(),
-              if (education.isNotEmpty) ...[
-                const Divider(height: 30),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.lightbulb_outline,
-                          size: 20, color: Colors.blueAccent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          education,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blueGrey.shade800,
-                            fontStyle: FontStyle.italic,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  task,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 25),
+                if (isBreathing) const BreathingCircle(),
+                if (education.isNotEmpty) ...[
+                  const Divider(height: 30),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.lightbulb_outline,
+                            size: 20, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            education,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blueGrey.shade800,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-              // Show variant indicator if available
-              if (hasVariants) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
+                ],
+                // Show variant indicator if available
+                if (hasVariants) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
-                ),
+                ],
+                // Personalization cards
+                if (data['personal_loop'] != null) ...[
+                  const SizedBox(height: 16),
+                  LoopPatternCard(personalLoop: data['personal_loop']),
+                ],
+                if (data['intervention_effectiveness'] != null) ...[
+                  const SizedBox(height: 16),
+                  EffectivenessCard(
+                    interventionEffectiveness: data['intervention_effectiveness'],
+                    interventionTitle: title,
+                  ),
+                ],
               ],
-              // Personalization cards
-              if (data['personal_loop'] != null) ...[
-                const SizedBox(height: 16),
-                LoopPatternCard(personalLoop: data['personal_loop']),
-              ],
-              if (data['intervention_effectiveness'] != null) ...[
-                const SizedBox(height: 16),
-                EffectivenessCard(
-                  interventionEffectiveness: data['intervention_effectiveness'],
-                  interventionTitle: title,
-                ),
-              ],
-            ],
+            ),
           ),
           actions: [
             if (hasVariants)
@@ -629,11 +631,14 @@ class _JournalScreenState extends State<JournalScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _statusMessage,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              _statusMessage,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Container(

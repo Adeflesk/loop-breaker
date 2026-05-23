@@ -23,6 +23,7 @@ class LoopPatternCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue.shade200),
       ),
+      constraints: const BoxConstraints(maxWidth: 650),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -30,12 +31,14 @@ class LoopPatternCard extends StatelessWidget {
             children: [
               Icon(Icons.trending_up, color: Colors.blue.shade700, size: 18),
               const SizedBox(width: 8),
-              Text(
-                'Your Loop Pattern',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.blue.shade900,
+              Expanded(
+                child: Text(
+                  'Your Loop Pattern',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.blue.shade900,
+                  ),
                 ),
               ),
             ],
@@ -101,6 +104,7 @@ class EffectivenessCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.green.shade200),
       ),
+      constraints: const BoxConstraints(maxWidth: 650),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -109,12 +113,14 @@ class EffectivenessCard extends StatelessWidget {
               Icon(Icons.check_circle_outline,
                    color: Colors.green.shade700, size: 18),
               const SizedBox(width: 8),
-              Text(
-                'Effectiveness Track Record',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.green.shade900,
+              Expanded(
+                child: Text(
+                  'Effectiveness Track Record',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.green.shade900,
+                  ),
                 ),
               ),
             ],
