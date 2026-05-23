@@ -307,138 +307,158 @@ class _JournalScreenState extends State<JournalScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: Row(
-            children: [
-              Icon(
-                isBreathing
-                    ? Icons.air
-                    : (isMovement ? Icons.directions_run : (isWater ? Icons.water_drop : Icons.psychology)),
-                color: Colors.blueAccent,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 600),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  task,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isBreathing
+                            ? Icons.air
+                            : (isMovement ? Icons.directions_run : (isWater ? Icons.water_drop : Icons.psychology)),
+                        color: Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 25),
-                if (isBreathing) const BreathingCircle(),
-                if (education.isNotEmpty) ...[
-                  const Divider(height: 30),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.lightbulb_outline,
-                            size: 20, color: Colors.blueAccent),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            education,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.blueGrey.shade800,
-                              fontStyle: FontStyle.italic,
+                // Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            task,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 25),
+                          if (isBreathing) const BreathingCircle(),
+                          if (education.isNotEmpty) ...[
+                            const Divider(height: 30),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.lightbulb_outline,
+                                      size: 20, color: Colors.blueAccent),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      education,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.blueGrey.shade800,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                          // Show variant indicator if available
+                          if (hasVariants) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                          // Personalization cards
+                          if (data['personal_loop'] != null) ...[
+                            const SizedBox(height: 16),
+                            LoopPatternCard(personalLoop: data['personal_loop']),
+                          ],
+                          if (data['intervention_effectiveness'] != null) ...[
+                            const SizedBox(height: 16),
+                            EffectivenessCard(
+                              interventionEffectiveness: data['intervention_effectiveness'],
+                              interventionTitle: title,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    children: [
+                      if (hasVariants)
+                        TextButton(
+                          onPressed: _cycleToNextVariant,
+                          child: const Text(
+                            "Try a different approach",
+                            style: TextStyle(color: Colors.blueAccent),
                           ),
                         ),
-                      ],
-                    ),
+                      TextButton(
+                        onPressed: () {
+                          _sendFeedback(false);
+                          Navigator.pop(context);
+                          _currentInterventionIndex = 0;
+                        },
+                        child: const Text(
+                          "Didn't help",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          _sendFeedback(true);
+                          Navigator.pop(context);
+                          _currentInterventionIndex = 0;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Loop Broken! Proud of you.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('I feel better'),
+                      ),
+                    ],
                   ),
-                ],
-                // Show variant indicator if available
-                if (hasVariants) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-                // Personalization cards
-                if (data['personal_loop'] != null) ...[
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 0),
-                    child: LoopPatternCard(personalLoop: data['personal_loop']),
-                  ),
-                ],
-                if (data['intervention_effectiveness'] != null) ...[
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 0),
-                    child: EffectivenessCard(
-                      interventionEffectiveness: data['intervention_effectiveness'],
-                      interventionTitle: title,
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
-          actions: [
-            if (hasVariants)
-              TextButton(
-                onPressed: _cycleToNextVariant,
-                child: const Text(
-                  "Try a different approach",
-                  style: TextStyle(color: Colors.blueAccent),
-                ),
-              ),
-            TextButton(
-              onPressed: () {
-                _sendFeedback(false);
-                Navigator.pop(context);
-                _currentInterventionIndex = 0; // Reset for next use
-              },
-              child: const Text(
-                "Didn't help",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _sendFeedback(true);
-                Navigator.pop(context);
-                _currentInterventionIndex = 0; // Reset for next use
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Loop Broken! Proud of you.'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('I feel better'),
-            ),
-          ],
         );
       },
     );
