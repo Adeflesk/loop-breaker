@@ -142,12 +142,10 @@ class _JournalScreenState extends State<JournalScreen> {
         _aiReasoning = data['reasoning'] ?? 'Analysis complete.';
       });
 
-      if (data['loop_detected'] == true) {
-        if (_riskLevel == 'High') {
-          _showHALTCheckIn(data);
-        } else {
-          _showInterventionDialog(data);
-        }
+      if (data['loop_detected'] == true && _riskLevel == 'High') {
+        _showHALTCheckIn(data);
+      } else {
+        _showInterventionDialog(data);
       }
       _controller.clear();
     } catch (e) {
@@ -267,10 +265,11 @@ class _JournalScreenState extends State<JournalScreen> {
   void _showStandardInterventionDialog(Map<String, dynamic> data) {
     _currentInterventionIndex = 0; // Reset to primary intervention on dialog open
     final String nodeDetected = data['detected_node'] ?? 'Unknown';
+    final bool loopDetected = data['loop_detected'] == true;
 
-    // Check if this node has variants
+    // Variants only apply when a loop is actually detected
     final List<String>? variants = INTERVENTION_VARIANTS[nodeDetected];
-    final bool hasVariants = variants != null && variants.length > 1;
+    final bool hasVariants = loopDetected && variants != null && variants.length > 1;
 
     // Callback to rebuild dialog with next variant
     void _cycleToNextVariant() {
@@ -307,153 +306,128 @@ class _JournalScreenState extends State<JournalScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return Dialog(
+        final String? educationInfo = data['education_info'] as String?;
+
+        return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          child: SingleChildScrollView(
+          title: Row(
+            children: [
+              Icon(
+                isBreathing
+                    ? Icons.air
+                    : (isMovement ? Icons.directions_run : (isWater ? Icons.water_drop : Icons.psychology)),
+                color: Colors.blueAccent,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
+                Text(
+                  task,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 25),
+                if (isBreathing) const BreathingCircle(),
+                if (educationInfo != null && educationInfo.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Why this works (neuroscience)'),
                     children: [
-                      Icon(
-                        isBreathing
-                            ? Icons.air
-                            : (isMovement ? Icons.directions_run : (isWater ? Icons.water_drop : Icons.psychology)),
-                        color: Colors.blueAccent,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: Text(
-                          title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          educationInfo,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blueGrey.shade800,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                          Text(
-                            task,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 25),
-                          if (isBreathing) const BreathingCircle(),
-                          if (education.isNotEmpty) ...[
-                            const Divider(height: 30),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.lightbulb_outline,
-                                      size: 20, color: Colors.blueAccent),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      education,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.blueGrey.shade800,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          // Show variant indicator if available
-                          if (hasVariants) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                          // Personalization cards
-                          if (data['personal_loop'] != null) ...[
-                            const SizedBox(height: 16),
-                            LoopPatternCard(personalLoop: data['personal_loop']),
-                          ],
-                          if (data['intervention_effectiveness'] != null) ...[
-                            const SizedBox(height: 16),
-                            EffectivenessCard(
-                              interventionEffectiveness: data['intervention_effectiveness'],
-                              interventionTitle: title,
-                            ),
-                          ],
-                        ],
-                      ),
+                ],
+                // Show variant indicator if available
+                if (hasVariants) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                      fontStyle: FontStyle.italic,
                     ),
-                // Actions
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    children: [
-                      if (hasVariants)
-                        TextButton(
-                          onPressed: _cycleToNextVariant,
-                          child: const Text(
-                            "Try a different approach",
-                            style: TextStyle(color: Colors.blueAccent),
-                          ),
-                        ),
-                      TextButton(
-                        onPressed: () {
-                          _sendFeedback(false);
-                          Navigator.pop(context);
-                          _currentInterventionIndex = 0;
-                        },
-                        child: const Text(
-                          "Didn't help",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          _sendFeedback(true);
-                          Navigator.pop(context);
-                          _currentInterventionIndex = 0;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Loop Broken! Proud of you.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('I feel better'),
-                      ),
-                    ],
                   ),
-                ),
+                ],
+                // Personalization cards
+                if (data['personal_loop'] != null) ...[
+                  const SizedBox(height: 16),
+                  LoopPatternCard(personalLoop: data['personal_loop']),
+                ],
+                if (data['intervention_effectiveness'] != null) ...[
+                  const SizedBox(height: 16),
+                  EffectivenessCard(
+                    interventionEffectiveness: data['intervention_effectiveness'],
+                    interventionTitle: title,
+                  ),
+                ],
+                const SizedBox(height: 8),
               ],
             ),
           ),
+          actions: [
+            if (hasVariants)
+              TextButton(
+                onPressed: _cycleToNextVariant,
+                child: const Text(
+                  "Try a different approach",
+                  style: TextStyle(color: Colors.blueAccent),
+                ),
+              ),
+            TextButton(
+              onPressed: () {
+                _sendFeedback(false);
+                Navigator.pop(context);
+                _currentInterventionIndex = 0;
+              },
+              child: const Text(
+                "Didn't help",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _sendFeedback(true);
+                Navigator.pop(context);
+                _currentInterventionIndex = 0;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Loop Broken! Proud of you.'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('I feel better'),
+            ),
+          ],
         );
       },
     );
@@ -478,7 +452,7 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LoopBreaker AI'),
+        title: const Text('LoopBreaker'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
