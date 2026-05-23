@@ -311,8 +311,7 @@ class _JournalScreenState extends State<JournalScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -338,13 +337,11 @@ class _JournalScreenState extends State<JournalScreen> {
                   ),
                 ),
                 // Content
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                           Text(
                             task,
                             textAlign: TextAlign.center,
@@ -407,8 +404,6 @@ class _JournalScreenState extends State<JournalScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ),
                 // Actions
                 Padding(
                   padding: const EdgeInsets.all(16),
