@@ -1,107 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/screens/journal_screen.dart';
 import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/crisis_safety_service.dart';
-import 'package:http/http.dart' as http;
-// ignore: implementation_imports
-import 'package:http/src/client.dart';
-
-class MockHttpClient implements http.Client {
-  final Map<String, http.Response> responses = {};
-
-  void setGetResponse(String url, http.Response response) {
-    responses[url] = response;
-  }
-
-  void setPostResponse(String url, http.Response response) {
-    responses[url] = response;
-  }
-
-  @override
-  Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
-    return responses[url.toString()] ?? http.Response('{}', 200);
-  }
-
-  @override
-  Future<http.Response> post(
-    Uri url, {
-    Map<String, String>? headers,
-    Object? body,
-    Encoding? encoding,
-  }) async {
-    return responses[url.toString()] ?? http.Response('{}', 200);
-  }
-
-  @override
-  noSuchMethod(Invocation invocation) {
-    return super.noSuchMethod(invocation);
-  }
-}
-
-Map<String, dynamic> _buildCrisisResponse() {
-  return {
-    'crisis_detected': true,
-    'detected_keywords': ['suicide', 'end my life'],
-    'crisis_resources': {
-      'message': 'We are concerned about your safety. Please reach out for support.',
-      'hotlines': [
-        {
-          'name': '988 Suicide & Crisis Lifeline',
-          'number': '988',
-          'url': 'https://988lifeline.org',
-          'availability': '24/7',
-        },
-        {
-          'name': 'Crisis Text Line',
-          'number': 'Text 741741',
-          'url': 'https://www.crisistextline.org',
-          'availability': '24/7',
-        },
-      ],
-    },
-    'detected_node': null,
-    'sublabel': null,
-    'confidence': null,
-    'reasoning': null,
-    'risk_level': null,
-    'loop_detected': false,
-  };
-}
-
-Map<String, dynamic> _buildNormalResponse() {
-  return {
-    'crisis_detected': false,
-    'sublabel': 'General',
-    'emotion_sublabel': 'Content',
-    'confidence': 0.85,
-    'reasoning': 'Detected positive state',
-    'risk_level': 'low',
-    'loop_detected': false,
-    'intervention_title': 'Take a moment to breathe',
-    'intervention_task': 'Take a deep breath',
-    'education_info': 'Breathing helps calm your nervous system',
-    'intervention_type': 'breathing',
-    'detected_node': 'Stress',
-  };
-}
-
-MockHttpClient _setupMockClient({bool isCrisis = false}) {
-  final mockClient = MockHttpClient();
-  mockClient.setPostResponse(
-    'http://127.0.0.1:8000/analyze',
-    http.Response(
-      jsonEncode(isCrisis ? _buildCrisisResponse() : _buildNormalResponse()),
-      200,
-    ),
-  );
-  mockClient.setGetResponse(
-    'http://127.0.0.1:8000/insight',
-    http.Response(jsonEncode({}), 200),
-  );
-  return mockClient;
-}
 
 void main() {
   group('JournalScreen Crisis Integration', () {
@@ -116,9 +16,6 @@ void main() {
 
     testWidgets('shows crisis dialog when crisis text detected',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -146,9 +43,6 @@ void main() {
 
     testWidgets('crisis dialog shows multiple hotlines',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -172,9 +66,6 @@ void main() {
 
     testWidgets('continues to submission when pressing continue button',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -206,9 +97,6 @@ void main() {
 
     testWidgets('cancel button dismisses dialog',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -238,9 +126,6 @@ void main() {
 
     testWidgets('does not show crisis dialog for normal text',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return normal response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: false);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -262,9 +147,6 @@ void main() {
 
     testWidgets('multiple keywords are detected in crisis text',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -289,9 +171,6 @@ void main() {
 
     testWidgets('crisis detection handles case insensitive input',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -313,9 +192,6 @@ void main() {
 
     testWidgets('dialog displays with correct color scheme',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return crisis response
-      ApiClient.clientOverride = _setupMockClient(isCrisis: true);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),
@@ -356,9 +232,6 @@ void main() {
 
     testWidgets('short text does not trigger crisis dialog',
         (WidgetTester tester) async {
-      // Set up mock HTTP client to return normal response (short text is not detected as crisis by backend)
-      ApiClient.clientOverride = _setupMockClient(isCrisis: false);
-
       await tester.pumpWidget(
         const MaterialApp(
           home: JournalScreen(),

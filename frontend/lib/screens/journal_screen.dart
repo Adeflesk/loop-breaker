@@ -4,6 +4,7 @@ import '../screens/history_screen.dart';
 import '../services/api_client.dart';
 import '../widgets/breathing_circle.dart';
 import '../widgets/crisis_safety_dialog.dart';
+import '../widgets/personalization_cards.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -375,6 +376,18 @@ class _JournalScreenState extends State<JournalScreen> {
                     color: Colors.grey.shade600,
                     fontStyle: FontStyle.italic,
                   ),
+                ),
+              ],
+              // Personalization cards
+              if (data['personal_loop'] != null) ...[
+                const SizedBox(height: 16),
+                LoopPatternCard(personalLoop: data['personal_loop']),
+              ],
+              if (data['intervention_effectiveness'] != null) ...[
+                const SizedBox(height: 16),
+                EffectivenessCard(
+                  interventionEffectiveness: data['intervention_effectiveness'],
+                  interventionTitle: title,
                 ),
               ],
             ],

@@ -164,7 +164,6 @@ class EffectivenessCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: (percentage / 100.0).clamp(0.0, 1.0),
               minHeight: 6,
-              semanticLabel: 'Effectiveness: $percentage percent',
               backgroundColor: Colors.grey.shade300,
               valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade700),
             ),

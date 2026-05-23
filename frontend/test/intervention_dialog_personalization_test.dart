@@ -38,10 +38,10 @@ void main() {
                 'reasoning': 'User mentioned work deadline pressure.',
                 'risk_level': 'medium',
                 'loop_detected': true,
-                'intervention_title': 'Breathing Exercise',
-                'intervention_task': 'Take three deep breaths.',
+                'intervention_title': 'Physiological Sigh',
+                'intervention_task': 'Take a deep breath in, followed by a second short sharp inhale, then a long slow exhale.',
                 'intervention_type': 'breathing',
-                'education_info': 'Deep breathing activates the parasympathetic nervous system.',
+                'education_info': 'This is the fastest biological way to offload carbon dioxide and lower your heart rate by activating the Vagus nerve.',
                 'personal_loop': {
                   'most_common_entry': 'Stress',
                   'cycle_length_hours': 4.5,
@@ -858,13 +858,13 @@ void main() {
                 'reasoning': 'Stress.',
                 'risk_level': 'medium',
                 'loop_detected': true,
-                'intervention_title': 'Walking',
-                'intervention_task': 'Take a walk.',
-                'intervention_type': 'movement',
-                'education_info': 'Walking helps.',
+                'intervention_title': 'Physiological Sigh',
+                'intervention_task': 'Take a deep breath in, followed by a second short sharp inhale, then a long slow exhale.',
+                'intervention_type': 'breathing',
+                'education_info': 'This is the fastest biological way to offload carbon dioxide and lower your heart rate.',
                 'personal_loop': null,
                 'intervention_effectiveness': {
-                  'Walking': {
+                  'Physiological Sigh': {
                     'helped': 7,
                     'neutral': 2,
                     'didn_help': 1,
@@ -920,17 +920,17 @@ void main() {
                 'reasoning': 'Work pressure.',
                 'risk_level': 'medium',
                 'loop_detected': true,
-                'intervention_title': 'Breathing',
-                'intervention_task': 'Breathe deeply.',
+                'intervention_title': 'Physiological Sigh',
+                'intervention_task': 'Take a deep breath in, followed by a second short sharp inhale, then a long slow exhale.',
                 'intervention_type': 'breathing',
-                'education_info': 'Breathing calms the nervous system.',
+                'education_info': 'This is the fastest biological way to offload carbon dioxide and lower your heart rate.',
                 'personal_loop': {
                   'most_common_entry': 'Stress',
                   'cycle_length_hours': 4.5,
                   'where_in_cycle': 'procrastination_phase',
                 },
                 'intervention_effectiveness': {
-                  'Breathing': {
+                  'Physiological Sigh': {
                     'helped': 6,
                     'neutral': 2,
                     'didn_help': 2,
