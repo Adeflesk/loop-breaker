@@ -162,8 +162,9 @@ class EffectivenessCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: percentage / 100.0,
+              value: (percentage / 100.0).clamp(0.0, 1.0),
               minHeight: 6,
+              semanticLabel: 'Effectiveness: $percentage percent',
               backgroundColor: Colors.grey.shade300,
               valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade700),
             ),
