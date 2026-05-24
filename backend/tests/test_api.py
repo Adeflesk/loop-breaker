@@ -137,6 +137,10 @@ class _FakeDBManager:
     def get_ai_insight(self):
         return self.insight_data
 
+    def get_weekly_activity(self) -> list:
+        """Mock weekly activity (Mon=True, rest False)."""
+        return [True, False, False, False, False, False, False]
+
     def get_history(self):
         return self._history
 
@@ -458,6 +462,9 @@ def test_insight_when_get_ai_insight_returns_none(client: TestClient):
     class DegradedDBManager:
         def get_ai_insight(self):
             return None
+
+        def get_weekly_activity(self) -> list:
+            return [False] * 7
 
     app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()
     try:
