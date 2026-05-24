@@ -73,6 +73,9 @@ class _FakeDBManager:
     def get_ai_insight(self):
         return self.insight_data
 
+    def get_weekly_activity(self) -> list:
+        return [False] * 7
+
     def get_history(self):
         return self._history
 
