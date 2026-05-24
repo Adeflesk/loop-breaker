@@ -100,6 +100,12 @@ class _JournalScreenState extends State<JournalScreen> {
     _validateInterventionCatalog();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   Future<void> _analyzeEntry() async {
     if (_controller.text.trim().isEmpty) return;
     setState(() => _isLoading = true);
