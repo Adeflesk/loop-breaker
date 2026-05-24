@@ -64,6 +64,22 @@ class CrisisResourcesResponse(BaseModel):
     emergency: str
 
 
+class PersonalLoopContext(BaseModel):
+    """User's personal behavioral loop pattern."""
+    most_common_entry: Optional[str] = None  # e.g., "Stress"
+    cycle_length_hours: Optional[float] = None  # e.g., 4.5
+    where_in_cycle: Optional[str] = None  # e.g., "procrastination_phase"
+
+
+class InterventionStats(BaseModel):
+    """Effectiveness stats for a single intervention."""
+    helped: int
+    neutral: int
+    didn_help: int
+    total: int
+    percentage: int  # 0-100
+
+
 class AnalysisResponse(BaseModel):
     """The structured output sent back to the Flutter app."""
     detected_node: str
@@ -100,22 +116,6 @@ class InsightResponse(BaseModel):
     streak: Optional[int] = None
     missing_need: Optional[str] = None
     trigger_count: Optional[int] = None
-
-
-class PersonalLoopContext(BaseModel):
-    """User's personal behavioral loop pattern."""
-    most_common_entry: Optional[str] = None  # e.g., "Stress"
-    cycle_length_hours: Optional[float] = None  # e.g., 4.5
-    where_in_cycle: Optional[str] = None  # e.g., "procrastination_phase"
-
-
-class InterventionStats(BaseModel):
-    """Effectiveness stats for a single intervention."""
-    helped: int
-    neutral: int
-    didn_help: int
-    total: int
-    percentage: int  # 0-100
 
 
 class JournalEntryResponse(BaseModel):
