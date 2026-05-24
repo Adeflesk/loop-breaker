@@ -116,6 +116,7 @@ class InsightResponse(BaseModel):
     streak: Optional[int] = None
     missing_need: Optional[str] = None
     trigger_count: Optional[int] = None
+    weekly_activity: Optional[List[bool]] = None  # 7 booleans, Mon–Sun
 
 
 class JournalEntryResponse(BaseModel):

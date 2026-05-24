@@ -488,6 +488,8 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         logger.error("Insight retrieval failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Insight service temporarily unavailable")
 
+    weekly_activity = db.get_weekly_activity()
+
     if not stats:
         return {
             "message": "Welcome! Start journaling to track your resilience.",
@@ -497,6 +499,7 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
             "streak": 0,
             "missing_need": None,
             "trigger_count": 0,
+            "weekly_activity": weekly_activity,
         }
 
     loop_count = stats.get("count", 0)
@@ -511,6 +514,7 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         "streak": int(stats.get("streak", 0)),
         "missing_need": stats.get("missing_need"),
         "trigger_count": int(stats.get("trigger_count", 0)),
+        "weekly_activity": weekly_activity,
     }
 
 @app.get("/history")

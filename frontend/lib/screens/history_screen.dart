@@ -107,6 +107,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ],
                 ),
               ),
+              // Weekly Scorecard
+              FutureBuilder<Map<String, dynamic>>(
+                future: ApiClient.fetchInsight(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final weeklyActivity =
+                      snapshot.data!['weekly_activity'] as List? ?? [];
+                  final streak =
+                      (snapshot.data!['streak'] as num?)?.toInt() ?? 0;
+                  if (weeklyActivity.isEmpty) return const SizedBox.shrink();
+                  return _buildWeeklyScorecard(weeklyActivity, streak);
+                },
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Align(
@@ -358,6 +371,107 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyScorecard(List<dynamic> weeklyActivity, int streak) {
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final todayIndex = DateTime.now().weekday - 1; // 0=Mon, 6=Sun
+    final activeDays = weeklyActivity.where((v) => v == true).length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This Week',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(7, (i) {
+                final isActive = i < weeklyActivity.length &&
+                    weeklyActivity[i] == true;
+                final isFuture = i > todayIndex;
+
+                Color dotColor;
+                String dotLabel;
+                Color dotLabelColor;
+
+                if (isActive) {
+                  dotColor = const Color(0xFF5B9B96);
+                  dotLabel = '✓';
+                  dotLabelColor = Colors.white;
+                } else if (isFuture) {
+                  dotColor = Colors.grey.shade100;
+                  dotLabel = '·';
+                  dotLabelColor = Colors.grey.shade400;
+                } else {
+                  dotColor = Colors.grey.shade200;
+                  dotLabel = '–';
+                  dotLabelColor = Colors.grey.shade500;
+                }
+
+                return Column(
+                  children: [
+                    Text(
+                      dayLabels[i],
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        dotLabel,
+                        style: TextStyle(
+                          color: dotLabelColor,
+                          fontSize: 14,
+                          fontWeight:
+                              isActive ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$activeDays/7 days active  •  🔥 $streak-day streak',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+          ],
         ),
       ),
     );

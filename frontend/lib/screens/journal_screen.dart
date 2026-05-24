@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../screens/history_screen.dart';
 import '../services/api_client.dart';
+import '../services/goal_service.dart';
 import '../widgets/breathing_circle.dart';
 import '../widgets/crisis_safety_dialog.dart';
 import '../widgets/personalization_cards.dart';
+import '../widgets/streak_bar.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -93,10 +95,14 @@ class _JournalScreenState extends State<JournalScreen> {
   bool _isLoading = false;
   String _aiReasoning = '';
   int _currentInterventionIndex = 0;  // Track which variant is showing
+  late final GoalService _goalService;
+  late Future<Map<String, dynamic>> _streakFuture;
 
   @override
   void initState() {
     super.initState();
+    _goalService = GoalService();
+    _streakFuture = _loadStreakData();
     _validateInterventionCatalog();
   }
 
@@ -454,6 +460,66 @@ class _JournalScreenState extends State<JournalScreen> {
     return INTERVENTION_CATALOG[title] ?? {'title': title, 'task': '', 'education': '', 'type': 'other'};
   }
 
+  Future<Map<String, dynamic>> _loadStreakData() async {
+    final history = await ApiClient.fetchHistory();
+    final goalDays = await _goalService.getGoalDays();
+    final streak = _goalService.computeStreak(history);
+    final isCompleted = _goalService.isGoalCompleted(streak, goalDays);
+    if (isCompleted) await _goalService.markGoalCompleted();
+    return {
+      'streak': streak,
+      'goalDays': goalDays,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  void _showGoalPicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Set Recovery Goal',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'How many consecutive days do you want to aim for?',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                children: [3, 7, 14, 30].map((days) {
+                  return ActionChip(
+                    label: Text('$days days'),
+                    onPressed: () async {
+                      await _goalService.setGoalDays(days);
+                      await _goalService.clearGoalCompleted();
+                      if (context.mounted) Navigator.pop(context);
+                      setState(() {
+                        _streakFuture = _loadStreakData();
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -477,6 +543,25 @@ class _JournalScreenState extends State<JournalScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
+              // Streak Bar
+              FutureBuilder<Map<String, dynamic>>(
+                future: _streakFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final streak = snapshot.data!['streak'] as int;
+                  final goalDays = snapshot.data!['goalDays'] as int;
+                  final isCompleted = snapshot.data!['isCompleted'] as bool;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: StreakBar(
+                      streak: streak,
+                      goalDays: goalDays,
+                      isCompleted: isCompleted,
+                      onTap: _showGoalPicker,
+                    ),
+                  );
+                },
+              ),
               // AI Insight Card
               FutureBuilder<Map<String, dynamic>>(
                 future: ApiClient.fetchInsight(),
