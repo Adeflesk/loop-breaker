@@ -320,6 +320,42 @@ class BehavioralStateManager:
             logger.error("DB insight error", exc_info=True)
             return None
 
+    def get_weekly_activity(self) -> List[bool]:
+        """Returns 7 booleans (Mon=0, Sun=6) for the current calendar week.
+
+        True if any JournalEntry for that day has user_outcome == 'helped'.
+        Returns [False] * 7 gracefully if Neo4j is unavailable.
+        """
+        if not self.is_available:
+            return [False] * 7
+
+        from datetime import date, timedelta
+
+        try:
+            today = date.today()
+            days_back = today.weekday()  # 0=Mon, 6=Sun; Monday was days_back days ago
+
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (j:JournalEntry)
+                    WHERE date(j.timestamp) >= date() - duration({days: $days_back})
+                      AND j.user_outcome = 'helped'
+                    RETURN toString(date(j.timestamp)) AS active_date
+                    """,
+                    days_back=days_back,
+                )
+                active_dates = {record["active_date"] for record in result}
+
+            monday = today - timedelta(days=days_back)
+            return [
+                (monday + timedelta(days=i)).isoformat() in active_dates
+                for i in range(7)
+            ]
+        except Exception:
+            logger.error("DB get_weekly_activity error", exc_info=True)
+            return [False] * 7
+
     def get_trend_stats(self) -> Dict[str, int]:
         """Returns count of entries per emotional state."""
         if not self.is_available:
