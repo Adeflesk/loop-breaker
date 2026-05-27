@@ -287,7 +287,7 @@ class BehavioralStateManager:
             return {}
 
         try:
-            from datetime import timedelta
+            from datetime import datetime, timedelta
             week_end = (datetime.fromisoformat(week_start) + timedelta(days=7)).strftime("%Y-%m-%d")
 
             with self.driver.session() as session:
