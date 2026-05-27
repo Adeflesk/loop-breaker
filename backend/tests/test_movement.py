@@ -60,7 +60,7 @@ class _FakeDBManager:
     def get_ai_insight(self):
         return {}
 
-    def get_history(self):
+    def get_history(self, start_date=None, end_date=None, limit=500):
         return []
 
     def save_journal_entry(self, **kwargs):
@@ -73,11 +73,20 @@ class _FakeDBManager:
         return {
             "most_common_entry": "Stress",
             "cycle_length_hours": 4.5,
-            "where_in_cycle": "early"
+            "where_in_cycle": "early",
+            "total_cycles": 12
         }
 
     def get_intervention_effectiveness(self, state: str, sublabel: str = None):
-        return {}
+        return {
+            "Physiological Sigh": {
+                "helped": 8,
+                "neutral": 1,
+                "didn_help": 1,
+                "total": 10,
+                "percentage": 80
+            }
+        }
 
     def close(self):
         pass

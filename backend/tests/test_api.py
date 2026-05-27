@@ -141,7 +141,7 @@ class _FakeDBManager:
         """Mock weekly activity (Mon=True, rest False)."""
         return [True, False, False, False, False, False, False]
 
-    def get_history(self):
+    def get_history(self, start_date=None, end_date=None, limit=500):
         return self._history
 
     def reset_all_data(self):
@@ -305,7 +305,7 @@ def test_insight_fallback_when_db_error(client: TestClient, monkeypatch: pytest.
 
 def test_history_fallback_when_db_error(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     class BrokenDB:
-        def get_history(self):
+        def get_history(self, start_date=None, end_date=None, limit=500):
             raise RuntimeError("DB error")
 
     app_main.app.dependency_overrides[app_main.get_db] = lambda: BrokenDB()
@@ -482,7 +482,7 @@ def test_history_empty_degraded(client: TestClient):
     """Test /history when get_history returns empty list (degraded mode)."""
 
     class DegradedDBManager:
-        def get_history(self):
+        def get_history(self, start_date=None, end_date=None, limit=500):
             return []
 
     app_main.app.dependency_overrides[app_main.get_db] = lambda: DegradedDBManager()

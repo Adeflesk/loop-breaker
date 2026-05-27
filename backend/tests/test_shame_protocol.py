@@ -30,7 +30,7 @@ class _FakeDBManager:
     def resolve_intervention(self, was_successful: bool, needs_check: Dict[str, bool] | None = None):
         pass
 
-    def get_history(self):
+    def get_history(self, start_date=None, end_date=None, limit=500):
         return []
 
     def get_trend_stats(self):
@@ -48,6 +48,32 @@ class _FakeDBManager:
 
     def get_thought_records(self, limit: int = 20, offset: int = 0) -> list:
         return []
+
+    def analyze_loop_path(self, days: int = 30):
+        """Return mock personal loop context."""
+        return {
+            "most_common_entry": "Stress",
+            "cycle_length_hours": 4.5,
+            "total_cycles": 12
+        }
+
+    def get_intervention_effectiveness(self, state: str, sublabel: str = None):
+        """Return mock intervention effectiveness data."""
+        return {
+            "Physiological Sigh": {
+                "helped": 8,
+                "neutral": 1,
+                "didn_help": 1,
+                "total": 10,
+                "percentage": 80
+            }
+        }
+
+    def save_journal_entry(self, **kwargs):
+        pass
+
+    def increment_intervention_seen_count(self, title: str):
+        pass
 
 
 @pytest.fixture(autouse=True)

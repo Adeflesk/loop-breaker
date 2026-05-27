@@ -76,7 +76,7 @@ class _FakeDBManager:
     def get_weekly_activity(self) -> list:
         return [False] * 7
 
-    def get_history(self):
+    def get_history(self, start_date=None, end_date=None, limit=500):
         return self._history
 
     def get_trend_stats(self):
@@ -91,16 +91,28 @@ class _FakeDBManager:
         return {
             "most_common_entry": "Stress",
             "cycle_length_hours": 4.5,
-            "where_in_cycle": "early"
+            "where_in_cycle": "early",
+            "total_cycles": 12
         }
 
     def get_intervention_effectiveness(self, state: str, sublabel: str = None):
         """Return mock intervention effectiveness data."""
-        return {}
+        return {
+            "Physiological Sigh": {
+                "helped": 8,
+                "neutral": 1,
+                "didn_help": 1,
+                "total": 10,
+                "percentage": 80
+            }
+        }
 
     def save_journal_entry(self, entry_id: str, raw_text: str, detected_state: str, sublabel: str, confidence: float, reasoning: str, risk_level: str, intervention_title: str, intervention_type: str, crisis_audit_id: str = None) -> bool:
         """Mock journal entry saving."""
         return True
+
+    def increment_intervention_seen_count(self, title: str):
+        pass
 
     def close(self):
         pass

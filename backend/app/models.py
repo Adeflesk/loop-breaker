@@ -139,3 +139,17 @@ class JournalOutcomeRequest(BaseModel):
     """Record user's self-reported outcome on a journal entry."""
     outcome: str  # "helped" | "didn't help" | "neutral"
     notes: Optional[str] = None
+
+
+class DailyCheckRequest(BaseModel):
+    """Daily physiological check-in."""
+    sleep_hours: float = Field(..., ge=0, le=12)
+    hydration_rating: int = Field(..., ge=1, le=5)
+    food_quality: int = Field(..., ge=1, le=5)
+    movement_minutes: int = Field(..., ge=0, le=180)
+    stress_level: int = Field(..., ge=1, le=5)
+
+
+class DailyCheckResponse(BaseModel):
+    """Response after recording daily check-in."""
+    status: str

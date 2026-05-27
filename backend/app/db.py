@@ -188,6 +188,23 @@ class BehavioralStateManager:
             self.is_available = False
             logger.error("DB resolve_intervention error", exc_info=True)
 
+    def get_intervention_seen_count(self, intervention_title: str) -> int:
+        """Return cumulative seen_count for an intervention, or 0 if unavailable."""
+        if not self.is_available:
+            return 0
+        try:
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (i:Intervention {title: $title})
+                    RETURN COALESCE(i.seen_count, 0) AS cnt
+                    LIMIT 1
+                """, title=intervention_title)
+                record = result.single()
+                return int(record["cnt"]) if record else 0
+        except Exception:
+            logger.error("DB get_intervention_seen_count error", exc_info=True)
+            return 0
+
     def increment_intervention_seen_count(self, intervention_title: str) -> None:
         """Increment seen_count for an intervention.
 
@@ -206,27 +223,50 @@ class BehavioralStateManager:
             logger.error("DB increment seen_count error", exc_info=True)
             # Non-critical; do not propagate
 
-    def get_history(self) -> List[Dict[str, Any]]:
-        """Fetches the last 20 entries for the Dashboard."""
+    def get_history(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 500,
+    ) -> List[Dict[str, Any]]:
+        """Fetches entries within an optional date range.
+
+        start_date / end_date: ISO 8601 date strings (e.g. "2026-04-01").
+        limit: max entries to return (default 500).
+        """
         if not self.is_available:
             logger.warning("Neo4j unavailable, returning empty history")
             return []
-            
+
         try:
             with self.driver.session() as session:
-                result = session.run("""
+                where_parts = []
+                params: Dict[str, Any] = {"limit": limit}
+
+                if start_date:
+                    where_parts.append("e.timestamp >= date($start_date)")
+                    params["start_date"] = start_date
+                if end_date:
+                    where_parts.append("e.timestamp < date($end_date) + duration({days: 1})")
+                    params["end_date"] = end_date
+
+                where_clause = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+                result = session.run(f"""
                     MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
                     OPTIONAL MATCH (e)-[:HAS_INTERVENTION]->(i:Intervention)
                     OPTIONAL MATCH (i)-[:HAS_OUTCOME]->(o:Outcome)
-                    RETURN 
-                        e.timestamp as time, 
-                        n.name as state, 
+                    {where_clause}
+                    RETURN
+                        e.timestamp as time,
+                        n.name as state,
                         i.title as intervention,
                         e.confidence as confidence,
                         o.success as was_successful
-                    ORDER BY e.timestamp DESC LIMIT 20
-                """)
-                
+                    ORDER BY e.timestamp DESC
+                    LIMIT $limit
+                """, **params)
+
                 history_data = []
                 for record in result:
                     clean = record.data()
@@ -237,6 +277,144 @@ class BehavioralStateManager:
         except Exception:
             logger.error("DB history error", exc_info=True)
             return []
+
+    def get_weekly_summary(self, week_start: str) -> Dict[str, Any]:
+        """Returns aggregated stats for a 7-day week starting on week_start.
+
+        week_start: ISO 8601 date string (e.g. "2026-04-29").
+        """
+        if not self.is_available:
+            return {}
+
+        try:
+            from datetime import timedelta
+            week_end = (datetime.fromisoformat(week_start) + timedelta(days=7)).strftime("%Y-%m-%d")
+
+            with self.driver.session() as session:
+                result = session.run("""
+                    MATCH (e:Entry)-[:RECORDS_STATE]->(n:Node)
+                    WHERE e.timestamp >= date($week_start) AND e.timestamp < date($week_end)
+                    OPTIONAL MATCH (e)-[:HAS_INTERVENTION]->(i:Intervention)
+                    OPTIONAL MATCH (i)-[:HAS_OUTCOME]->(o:Outcome)
+                    RETURN
+                        count(e) AS total_entries,
+                        count(DISTINCT DATE(e.timestamp)) AS days_with_entries,
+                        avg(e.confidence) AS avg_confidence,
+                        count(CASE WHEN o.success = true THEN 1 END) AS successful_interventions,
+                        count(o) AS total_interventions,
+                        collect(n.name) AS states
+                """, week_start=week_start, week_end=week_end)
+
+                record = result.single()
+                if not record or record["total_entries"] == 0:
+                    return {}
+
+                data = record.data()
+                total_int = data.get("total_interventions") or 0
+                succ_int = data.get("successful_interventions") or 0
+                success_rate = round(succ_int / total_int * 100, 1) if total_int > 0 else 0.0
+
+                state_counts: Dict[str, int] = {}
+                for s in (data.get("states") or []):
+                    if s:
+                        state_counts[s] = state_counts.get(s, 0) + 1
+
+                return {
+                    "week_start": week_start,
+                    "total_entries": data["total_entries"],
+                    "days_with_entries": data["days_with_entries"],
+                    "avg_confidence": round(float(data.get("avg_confidence") or 0), 2),
+                    "intervention_success_rate": success_rate,
+                    "top_states": state_counts,
+                }
+        except Exception:
+            logger.error("DB weekly summary error", exc_info=True)
+            return {}
+
+    def create_daily_check(
+        self,
+        sleep_hours: float,
+        hydration_rating: int,
+        food_quality: int,
+        movement_minutes: int,
+        stress_level: int,
+    ) -> bool:
+        """Records a daily physiological check-in. Returns True on success."""
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run("""
+                    CREATE (dc:DailyCheck {
+                        timestamp: datetime(),
+                        sleep_hours: $sleep,
+                        hydration_rating: $hydration,
+                        food_quality: $food,
+                        movement_minutes: $movement,
+                        stress_level: $stress
+                    })
+                """,
+                    sleep=sleep_hours,
+                    hydration=hydration_rating,
+                    food=food_quality,
+                    movement=movement_minutes,
+                    stress=stress_level,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB daily check creation error", exc_info=True)
+            return False
+
+    def get_daily_check_correlation(self, days: int = 30) -> Dict[str, Any]:
+        """Correlates daily physiological state with loop risk over the past N days.
+
+        Returns a dict with top_correlate and correlates, or {} if unavailable / no data.
+        """
+        if not self.is_available:
+            return {}
+
+        try:
+            with self.driver.session() as session:
+                checks = session.run("""
+                    MATCH (dc:DailyCheck)
+                    WHERE dc.timestamp > datetime() - duration({days: $days})
+                    RETURN dc.sleep_hours AS sleep_hours, dc.stress_level AS stress_level
+                """, days=days)
+
+                sleep_counts = {"low": 0, "normal": 0, "high": 0}
+                stress_counts = {"low": 0, "normal": 0, "high": 0}
+
+                for record in checks:
+                    sleep = record["sleep_hours"]
+                    stress = record["stress_level"]
+
+                    if sleep < 6:
+                        sleep_counts["low"] += 1
+                    elif sleep <= 8:
+                        sleep_counts["normal"] += 1
+                    else:
+                        sleep_counts["high"] += 1
+
+                    if stress <= 2:
+                        stress_counts["low"] += 1
+                    elif stress <= 3:
+                        stress_counts["normal"] += 1
+                    else:
+                        stress_counts["high"] += 1
+
+                correlates: Dict[str, float] = {}
+                if sleep_counts["normal"] > 0:
+                    correlates["low_sleep"] = round(sleep_counts["low"] / sleep_counts["normal"], 2)
+                if stress_counts["normal"] > 0:
+                    correlates["high_stress"] = round(stress_counts["high"] / stress_counts["normal"], 2)
+
+                top = max(correlates, key=correlates.get) if correlates else None
+                return {"top_correlate": top, "correlates": correlates}
+        except Exception:
+            logger.error("DB correlation analysis error", exc_info=True)
+            return {}
 
     def get_ai_insight(self) -> Optional[Dict[str, Any]]:
         """Calculates patterns and resilience scores."""

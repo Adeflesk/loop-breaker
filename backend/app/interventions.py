@@ -1,5 +1,11 @@
 INTERVENTIONS = {
     "Procrastination": {
+        "movement": {
+            "title": "2-Minute Body Break",
+            "task": "Stand up right now. Do 20 jumping jacks or walk briskly for 2 minutes. Then come back.",
+            "education": "Procrastination freezes dopamine. Physical movement triggers dopamine release, giving your brain the reward signal it's been waiting for—without the avoidance.",
+            "type": "movement"
+        },
         "Avoidance": {
             "title": "The 5-Minute Sprint",
             "task": "Pick the smallest sub-task and do it for exactly 5 minutes. You can stop after that.",
@@ -48,6 +54,12 @@ INTERVENTIONS = {
         }
     },
     "Anxiety": {
+        "movement": {
+            "title": "Vigorous Physical Discharge",
+            "task": "Do 30 seconds of vigorous movement — jumping jacks, burpees, or sprint in place. Feel the energy shift.",
+            "education": "Anxiety is mobilisation energy with nowhere to go. Vigorous movement burns off excess cortisol and adrenaline, completing the stress cycle your nervous system started.",
+            "type": "movement"
+        },
         "Hypervigilance": {
             "title": "Threat Assessment Protocol",
             "task": "Rate the actual threat level right now on a scale of 1-10. Then rate what your nervous system *thinks* the threat is. Usually they don't match.",
@@ -86,6 +98,12 @@ INTERVENTIONS = {
         }
     },
     "Stress": {
+        "movement": {
+            "title": "Cortisol Discharge Walk",
+            "task": "Walk briskly outside for 5 minutes. No phone. Focus on your breathing and footsteps.",
+            "education": "Stress floods your bloodstream with cortisol. Rhythmic, moderate-intensity walking is the fastest proven mechanism for clearing cortisol — your body metabolises it through movement.",
+            "type": "movement"
+        },
         "Burnout": {
             "title": "The Recovery Reset",
             "task": "For the next 10 minutes, do absolutely nothing productive. No phone, no planning—just rest.",
@@ -156,6 +174,12 @@ INTERVENTIONS = {
         ],
     },
     "Overwhelm": {
+        "movement": {
+            "title": "Tension Release Shake",
+            "task": "Stand up and shake your body for 60 seconds — hands, arms, legs, shoulders. Let it be ridiculous.",
+            "education": "Overwhelm stores tension in your muscles as unresolved threat. Shaking is the mammalian default for discharging freeze-state energy — it literally resets your nervous system baseline.",
+            "type": "movement"
+        },
         "Paralysis": {
             "title": "One Next Step",
             "task": "Don't look at the whole list. Pick ONE thing that takes 2 minutes or less. Do that. Then stop and reassess.",

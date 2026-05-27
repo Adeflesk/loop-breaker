@@ -25,6 +25,7 @@ from .models import (
     AnalysisResponse,
     CrisisHotline,
     CrisisResourcesResponse,
+    DailyCheckRequest,
     FeedbackRequest,
     InsightResponse,
     InterventionStats,
@@ -81,6 +82,12 @@ FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lo
 
 # Crisis Safety Feature
 FEATURE_CRISIS_SAFETY = os.getenv("FEATURE_CRISIS_SAFETY", "true").lower() == "true"
+
+# Phase 6 Feature Flags
+FEATURE_PROGRESSIVE_EDUCATION = os.getenv("FEATURE_PROGRESSIVE_EDUCATION", "false").lower() == "true"
+FEATURE_LOOP_PATH = os.getenv("FEATURE_LOOP_PATH", "false").lower() == "true"
+FEATURE_WEEKLY_TRACKING = os.getenv("FEATURE_WEEKLY_TRACKING", "true").lower() == "true"
+FEATURE_DAILY_CHECK = os.getenv("FEATURE_DAILY_CHECK", "false").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -374,10 +381,18 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
             logger.error("Shame count check failed", exc_info=True, extra={"request_id": request_id})
             shame_safety_alert = False
 
-    # 6b. Determine education depth based on heuristic
-    # Heuristic: first exposure = introduce, 2-4 = reinforce, 5+ = deepen
-    # (For MVP, we use a simple heuristic; later phases can fetch seen_count from DB)
+    # 6b. Determine education depth from DB seen_count (when flag enabled) or default to "introduce"
     education_depth = "introduce"
+    if FEATURE_PROGRESSIVE_EDUCATION:
+        try:
+            seen = db.get_intervention_seen_count(breaker["title"])
+        except Exception:
+            seen = 0
+        if seen >= 5:
+            education_depth = "deepen"
+        elif seen >= 2:
+            education_depth = "reinforce"
+        # else: "introduce" (0 or 1)
 
     # Select education text from depth-based dict
     if isinstance(breaker.get("education"), dict):
@@ -517,14 +532,79 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         "weekly_activity": weekly_activity,
     }
 
+@app.get("/loop-path")
+async def get_loop_path(
+    days: int = 30,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_LOOP_PATH:
+        raise HTTPException(status_code=404, detail="Loop path feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        path = db.get_loop_path(days=days)
+        analysis = db.analyze_loop_path(days=days)
+        return {"path": path, "analysis": analysis}
+    except Exception:
+        logger.error("Loop path retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Loop path service unavailable")
+
+
 @app.get("/history")
-async def get_history(request: Request, db: BehavioralStateManager = Depends(get_db)):
+async def get_history(
+    request: Request,
+    db: BehavioralStateManager = Depends(get_db),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 500,
+):
     request_id = getattr(request.state, "request_id", "")
     try:
-        return db.get_history()
+        return db.get_history(start_date=start_date, end_date=end_date, limit=limit)
     except Exception:
         logger.error("History retrieval failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="History service temporarily unavailable")
+
+
+@app.get("/weekly-summary")
+async def get_weekly_summary(
+    week_start: str = Query(..., description="ISO 8601 date, e.g. 2026-04-29"),
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_weekly_summary(week_start=week_start)
+    except Exception:
+        logger.error("Weekly summary retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Weekly summary service unavailable")
+
+
+@app.post("/daily-check", status_code=201)
+async def create_daily_check(
+    body: DailyCheckRequest,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_DAILY_CHECK:
+        raise HTTPException(status_code=404, detail="Daily check feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        success = db.create_daily_check(
+            sleep_hours=body.sleep_hours,
+            hydration_rating=body.hydration_rating,
+            food_quality=body.food_quality,
+            movement_minutes=body.movement_minutes,
+            stress_level=body.stress_level,
+        )
+        if success:
+            return {"status": "recorded"}
+        raise HTTPException(status_code=503, detail="Daily check recording failed")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Daily check creation failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Daily check service unavailable")
 
 
 @app.post("/feedback")
