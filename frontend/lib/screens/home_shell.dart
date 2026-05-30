@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'history_screen.dart';
 import 'journal_history_screen.dart';
 import 'journal_screen.dart';
+import 'library_screen.dart';
 import 'thought_records_tab.dart';
 
 class HomeShell extends StatefulWidget {
@@ -20,6 +21,7 @@ class _HomeShellState extends State<HomeShell> {
     const HistoryScreen(),
     const ThoughtRecordsTab(),
     const JournalHistoryScreen(),
+    const LibraryScreen(),
   ];
 
   @override
@@ -56,6 +58,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.book_outlined),
             selectedIcon: Icon(Icons.book),
             label: 'My Journal',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Learn',
           ),
         ],
       ),
