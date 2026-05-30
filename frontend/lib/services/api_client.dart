@@ -310,7 +310,9 @@ class ApiClient {
       return await _withRetry(
         () async {
           final response = await _httpClient.get(
-            _uri('/weekly-summary?week_start=$weekStart'),
+            Uri.parse('$_baseUrl/weekly-summary').replace(
+              queryParameters: {'week_start': weekStart},
+            ),
           );
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
@@ -333,7 +335,9 @@ class ApiClient {
       return await _withRetry(
         () async {
           final response = await _httpClient.get(
-            _uri('/history?start_date=$start&end_date=$end&limit=500'),
+            Uri.parse('$_baseUrl/history').replace(
+              queryParameters: {'start_date': start, 'end_date': end, 'limit': '500'},
+            ),
           );
           if (response.statusCode == 200) {
             final decoded = jsonDecode(response.body);
