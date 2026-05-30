@@ -473,6 +473,171 @@ class _JournalScreenState extends State<JournalScreen> {
     };
   }
 
+  Future<void> _showDailyCheckIn() async {
+    double sleepHours = 7.0;
+    int hydration = 3;
+    int foodQuality = 3;
+    double movementMinutes = 30.0;
+    int stressLevel = 3;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget ratingButtons(
+              int value,
+              ValueChanged<int> onChanged, {
+              bool isStress = false,
+            }) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final selected = (i + 1) == value;
+                  final color = isStress ? Colors.red : const Color(0xFF5B9B96);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () => onChanged(i + 1),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: selected ? color : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: selected ? Colors.white : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Daily Check-In',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Sleep (hours)',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Slider(
+                      value: sleepHours,
+                      min: 0,
+                      max: 12,
+                      divisions: 24,
+                      label: sleepHours.toStringAsFixed(1),
+                      onChanged: (v) => setDialogState(() => sleepHours = v),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Hydration',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    ratingButtons(
+                      hydration,
+                      (v) => setDialogState(() => hydration = v),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Food Quality',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    ratingButtons(
+                      foodQuality,
+                      (v) => setDialogState(() => foodQuality = v),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Movement (minutes)',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Slider(
+                      value: movementMinutes,
+                      min: 0,
+                      max: 180,
+                      divisions: 18,
+                      label: movementMinutes.toInt().toString(),
+                      onChanged: (v) => setDialogState(() => movementMinutes = v),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Stress Level',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    ratingButtons(
+                      stressLevel,
+                      (v) => setDialogState(() => stressLevel = v),
+                      isStress: true,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Skip'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      await ApiClient.createDailyCheck({
+                        'sleep_hours': sleepHours,
+                        'hydration_rating': hydration,
+                        'food_quality': foodQuality,
+                        'movement_minutes': movementMinutes.toInt(),
+                        'stress_level': stressLevel,
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Check-in saved!')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to save check-in. Please try again.'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5B9B96),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save Check-In'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showGoalPicker() {
     showModalBottomSheet(
       context: context,
@@ -537,6 +702,13 @@ class _JournalScreenState extends State<JournalScreen> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showDailyCheckIn,
+        tooltip: 'Daily Check-In',
+        backgroundColor: const Color(0xFF5B9B96),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.favorite),
       ),
       body: Center(
         child: SingleChildScrollView(
