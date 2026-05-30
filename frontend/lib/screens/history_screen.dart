@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import '../widgets/expandable_history_entry.dart';
 import '../widgets/loop_path_chart.dart';
+import '../widgets/weekly_scorecard.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -118,6 +119,42 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       (snapshot.data!['streak'] as num?)?.toInt() ?? 0;
                   if (weeklyActivity.isEmpty) return const SizedBox.shrink();
                   return _buildWeeklyScorecard(weeklyActivity, streak);
+                },
+              ),
+              // Weekly Comparison
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: Future.wait([
+                  _fetchCurrentWeekSummary(),
+                  _fetchPreviousWeekSummary(),
+                ]),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final current = snapshot.data![0];
+                  final previous = snapshot.data![1];
+                  if (current.isEmpty && previous.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weekly Comparison',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        WeeklyScorecard(
+                          currentWeek: current,
+                          previousWeek: previous,
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
               Padding(
@@ -318,6 +355,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
         },
       ),
     );
+  }
+
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<Map<String, dynamic>> _fetchCurrentWeekSummary() {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final weekStart = _formatDate(DateTime(monday.year, monday.month, monday.day));
+    return ApiClient.getWeeklySummary(weekStart);
+  }
+
+  Future<Map<String, dynamic>> _fetchPreviousWeekSummary() {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final prevMonday = monday.subtract(const Duration(days: 7));
+    final weekStart = _formatDate(DateTime(prevMonday.year, prevMonday.month, prevMonday.day));
+    return ApiClient.getWeeklySummary(weekStart);
   }
 
   Widget _buildStatCard(String label, String value, Color color) {
