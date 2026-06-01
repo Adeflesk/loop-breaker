@@ -15,12 +15,18 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   late Future<List<dynamic>> _historyFuture;
+  late Future<Map<String, dynamic>> _insightFuture;
+  late Future<Map<String, dynamic>> _statsFuture;
+  late Future<Map<String, dynamic>> _loopPathFuture;
   late Future<List<Map<String, dynamic>>> _weeklyComparisonFuture;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = ApiClient.fetchHistory();
+    _insightFuture = ApiClient.fetchInsight();
+    _statsFuture = ApiClient.fetchStats();
+    _loopPathFuture = ApiClient.getLoopPath(days: 30);
     _weeklyComparisonFuture = Future.wait([
       _fetchCurrentWeekSummary(),
       _fetchPreviousWeekSummary(),
@@ -30,6 +36,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _refreshHistory() {
     setState(() {
       _historyFuture = ApiClient.fetchHistory();
+      _insightFuture = ApiClient.fetchInsight();
+      _statsFuture = ApiClient.fetchStats();
+      _loopPathFuture = ApiClient.getLoopPath(days: 30);
       _weeklyComparisonFuture = Future.wait([
         _fetchCurrentWeekSummary(),
         _fetchPreviousWeekSummary(),
@@ -119,7 +128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               // Weekly Scorecard
               FutureBuilder<Map<String, dynamic>>(
-                future: ApiClient.fetchInsight(),
+                future: _insightFuture,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox.shrink();
                   final weeklyActivity =
@@ -179,7 +188,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               FutureBuilder<Map<String, dynamic>>(
-                future: ApiClient.fetchStats(),
+                future: _statsFuture,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const SizedBox.shrink();
@@ -295,7 +304,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               FutureBuilder<Map<String, dynamic>>(
-                future: ApiClient.getLoopPath(days: 30),
+                future: _loopPathFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Padding(

@@ -167,13 +167,19 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
               onTap: _toggle,
             ),
             // Expanded details (animated)
-            ClipRect(
-              child: Align(
-                alignment: Alignment.topCenter,
-                heightFactor: _heightFactor.value,
-                child: Transform.translate(
-                  offset: Offset(0, _slideAnimation.value),
-                  child: Container(
+            AnimatedBuilder(
+              animation: _expandController,
+              builder: (context, child) => ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: _heightFactor.value,
+                  child: Transform.translate(
+                    offset: Offset(0, _slideAnimation.value),
+                    child: child,
+                  ),
+                ),
+              ),
+              child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
@@ -204,9 +210,7 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
                       ],
                     ),
                   ),
-                ),
               ),
-            ),
           ],
         ),
       ),
