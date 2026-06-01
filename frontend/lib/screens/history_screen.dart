@@ -15,16 +15,25 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   late Future<List<dynamic>> _historyFuture;
+  late Future<List<Map<String, dynamic>>> _weeklyComparisonFuture;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = ApiClient.fetchHistory();
+    _weeklyComparisonFuture = Future.wait([
+      _fetchCurrentWeekSummary(),
+      _fetchPreviousWeekSummary(),
+    ]);
   }
 
   void _refreshHistory() {
     setState(() {
       _historyFuture = ApiClient.fetchHistory();
+      _weeklyComparisonFuture = Future.wait([
+        _fetchCurrentWeekSummary(),
+        _fetchPreviousWeekSummary(),
+      ]);
     });
   }
 
@@ -123,10 +132,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               // Weekly Comparison
               FutureBuilder<List<Map<String, dynamic>>>(
-                future: Future.wait([
-                  _fetchCurrentWeekSummary(),
-                  _fetchPreviousWeekSummary(),
-                ]),
+                future: _weeklyComparisonFuture,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox.shrink();
                   final current = snapshot.data![0];
