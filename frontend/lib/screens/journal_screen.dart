@@ -600,6 +600,7 @@ class _JournalScreenState extends State<JournalScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(context);
                     try {
                       await ApiClient.createDailyCheck({
@@ -610,13 +611,13 @@ class _JournalScreenState extends State<JournalScreen> {
                         'stress_level': stressLevel,
                       });
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Check-in saved!')),
                         );
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Failed to save check-in. Please try again.'),
                           ),
