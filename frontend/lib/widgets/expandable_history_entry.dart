@@ -100,7 +100,9 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
         child: Column(
           children: [
             // Main entry card (always visible)
-            ListTile(
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -165,6 +167,7 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
                 ],
               ),
               onTap: _toggle,
+            ),
             ),
             // Expanded details (animated)
             AnimatedBuilder(
