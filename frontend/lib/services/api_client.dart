@@ -304,5 +304,66 @@ class ApiClient {
       debugPrint('Journal outcome error: $e');
     }
   }
+
+  static Future<Map<String, dynamic>> getWeeklySummary(String weekStart) async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(
+            Uri.parse('$_baseUrl/weekly-summary').replace(
+              queryParameters: {'week_start': weekStart},
+            ),
+          );
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Weekly summary failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Weekly summary fetch error: $e');
+    }
+    return {};
+  }
+
+  static Future<List<dynamic>> getHistoryDateRange(
+    String start,
+    String end,
+  ) async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(
+            Uri.parse('$_baseUrl/history').replace(
+              queryParameters: {'start_date': start, 'end_date': end, 'limit': '500'},
+            ),
+          );
+          if (response.statusCode == 200) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is List) return decoded;
+          }
+          throw Exception('History date range failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _historyTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('History date range fetch error: $e');
+    }
+    return [];
+  }
+
+  static Future<void> createDailyCheck(Map<String, dynamic> data) async {
+    return _withRetry(() async {
+      final response = await _httpClient.post(
+        _uri('/daily-check'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Daily check failed with status ${response.statusCode}');
+      }
+    });
+  }
 }
 
