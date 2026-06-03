@@ -85,7 +85,8 @@ loop-breaker/
 │   │   ├── db.py             # Neo4j operations, loop detection
 │   │   ├── ai.py             # Claude/Ollama prompts, response parsing
 │   │   ├── interventions.py  # Intervention catalog and mapping
-│   │   └── tests/            # pytest suite (23+ tests)
+│   │   ├── crisis.py         # Crisis safety detection service
+│   │   └── tests/            # pytest suite (311+ tests)
 │   └── requirements.txt
 ├── frontend/
 │   ├── lib/
@@ -158,11 +159,10 @@ The crisis safety layer provides dual-layer detection and escalation for crisis 
 - Hopelessness: hopeless, no point, pointless, give up, can't go on, better off dead, everyone would be better without me, nothing matters, why bother
 - Abuse/Violence: abuse, being hurt, domestic violence, hit me, rape, sexual assault
 
-**Frontend (`frontend/lib/services/crisis_safety_service.dart`):**
-- Mirrors backend detection logic for real-time client-side alerting
+**Frontend (`frontend/lib/widgets/crisis_safety_dialog.dart`):**
 - `CrisisSafetyDialog` widget displays hotlines: 988, Crisis Text Line, IASP
-- Integration in `journal_screen.dart` shows dialog before API call
-- User can continue submission or cancel (user agency preserved)
+- `journal_screen.dart` checks `crisis_detected` in the API response and shows the dialog if true
+- User can continue to the intervention or cancel (user agency preserved)
 
 **API Contract:**
 When crisis detected, `/analyze` returns:
@@ -212,21 +212,44 @@ SAFE_DEFAULTS = {
 - Log raw model output for debugging (with user PII redacted)
 
 ### Response Contract (`/analyze`)
-The endpoint **always** returns these fields:
+
+The endpoint always returns these fields (all optional fields default to `null`):
+
 ```json
 {
-  "sublabel": "string",
-  "emotion_sublabel": "string",
-  "confidence": float (0.0-1.0),
+  "detected_node": "string",
+  "sublabel": "string|null",
+  "emotion_sublabel": "string|null",
+  "confidence": "float (0.0-1.0)",
   "reasoning": "string",
   "risk_level": "low|medium|high",
-  "loop_detected": boolean,
+  "loop_detected": "boolean",
   "intervention_title": "string",
   "intervention_task": "string",
-  "education_info": "string",
-  "intervention_type": "breathing|grounding|movement|reflection"
+  "education_info": "string|null",
+  "education_depth": "introduce|reinforce|deepen|null",
+  "intervention_type": "breathing|grounding|movement|cognitive|other|null",
+  "node_arc_position": "int (1-8)|null",
+  "node_arc_label": "string|null",
+  "intervention_variants": "[{title, task, education, type}]|null",
+  "msc_steps": "[{step, name, task, education}]|null",
+  "alternatives": "[{title, task, education, type}]|null",
+  "shame_safety_alert": "boolean|null",
+  "movement_protocol": "object|null",
+  "journal_entry_id": "string (UUID)|null",
+  "personal_loop": "{most_common_entry, cycle_length_hours, where_in_cycle}|null",
+  "intervention_effectiveness": "{title: {helped, neutral, didn_help, total, percentage}}|null",
+  "crisis_detected": "boolean|null",
+  "crisis_resources": "{message, hotlines, emergency}|null",
+  "detected_keywords": "[string]|null"
 }
 ```
+
+**Key fields:**
+- `msc_steps` — populated for Shame state only; 3-step Mindful Self-Compassion protocol
+- `alternatives` — up to 2 fallback interventions for "This isn't helping" cycling
+- `education_depth` — controls which education tier is shown (`introduce` → `reinforce` → `deepen`)
+- `crisis_detected` — when `true`, all intervention fields are null; only `crisis_resources` is populated
 
 **Note:** If AI is unavailable, return safe defaults with `intervention_type: "breathing"` (default intervention).
 
@@ -238,7 +261,17 @@ State names from Claude/Ollama → intervention selection in `backend/app/interv
 
 ## Feature Flags
 
-Feature-driven features use `FEATURE_*` env vars. Check `backend/app/main.py` for current flags:
+Feature-driven features use `FEATURE_*` env vars. Current flags in `backend/app/main.py`:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `FEATURE_SUBLABEL_ROUTING` | `true` | Route interventions by emotion sublabel |
+| `FEATURE_PROGRESSIVE_EDUCATION` | `true` | Depth-aware education (introduce→reinforce→deepen) |
+| `FEATURE_CRISIS_SAFETY` | `true` | Crisis keyword detection and resource response |
+| `FEATURE_MOVEMENT_PROTOCOLS` | `false` | Include movement protocol variant in response |
+| `FEATURE_THOUGHT_RECORDS` | `false` | Enable thought record endpoints |
+
+Note: `FEATURE_SHAME_PROTOCOL` was removed — `msc_steps` is now always populated for Shame.
 
 ```python
 FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lower() == "true"
@@ -319,11 +352,10 @@ except Exception as e:
 
 ## Notes & Maintenance
 
-- **Last updated:** 2026-05-15
-- **Next review:** After Phase 1 completion (week 2, ~May 5)
+- **Last updated:** 2026-06-03
 - This file documents how Claude works with the LoopBreaker team—update it as workflows evolve
 - When committing major architectural changes or new patterns, update the relevant section here
-- Phase 4.1 (Developer Documentation) includes expanding `docs/api.md` and `docs/setup.md` with more endpoint examples and runbook details
+- `docs/api.md` is the live API contract reference — keep it in sync with `backend/app/models.py`
 - If the project adopts a formal agent framework or prompt library, update the "AI/LLM Integration Workflow" section to reference it
 
 ---
