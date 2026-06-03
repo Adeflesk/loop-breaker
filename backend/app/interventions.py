@@ -172,6 +172,20 @@ INTERVENTIONS = {
                 }
             },
         ],
+        "alternatives": [
+            {
+                "title": "Cognitive Reframe",
+                "task": "Notice the thought that's running ('I am bad', 'I'm broken', 'I'm not enough'). Write it down. Now rewrite it: 'I made a mistake. My brain can adapt and I can learn from this.'",
+                "education": "Shame activates your negativity bias — your brain amplifies self-critical signals by default. Cognitive reframing reprograms the loop: each time you catch the thought and replace it, you weaken the shame circuit and strengthen the growth circuit (Rewire — Vignola).",
+                "type": "cognitive"
+            },
+            {
+                "title": "Zone 2 Walk",
+                "task": "Walk at a comfortable pace for 5–10 minutes — slow enough that you could hold a conversation. No phone, no destination. Let your body lead.",
+                "education": "Shame creates a freeze response. Zone 2 activity sends direct muscle-to-brain signals that shift your nervous system out of threat mode without overwhelming it. Your muscles communicate directly with your brain (Rewire — Vignola, muscle-brain chapter).",
+                "type": "movement"
+            },
+        ],
     },
     "Overwhelm": {
         "movement": {

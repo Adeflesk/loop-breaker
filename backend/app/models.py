@@ -26,6 +26,14 @@ class MscStep(BaseModel):
     education: str
 
 
+class AlternativeIntervention(BaseModel):
+    """A fallback intervention offered when the primary isn't helping."""
+    title: str
+    task: str
+    education: str
+    type: str
+
+
 class ThoughtRecordRequest(BaseModel):
     """Request to create a thought record."""
     situation: str = Field(..., min_length=1, max_length=2000)
@@ -98,6 +106,7 @@ class AnalysisResponse(BaseModel):
     node_arc_label: Optional[str] = None  # e.g., "Node 3 of 8 — Procrastination"
     intervention_variants: Optional[List[InterventionOption]] = None  # Alternative approaches for this state/sublabel
     msc_steps: Optional[List[MscStep]] = None  # Mindful Self-Compassion steps for Shame interventions
+    alternatives: Optional[List[AlternativeIntervention]] = None  # Fallback interventions for "this isn't helping" cycling
     shame_safety_alert: Optional[bool] = None  # True if Shame detected 3+ times in 24 hours
     movement_protocol: Optional[Dict[str, Any]] = None  # Movement-based intervention variant (when flag enabled)
     journal_entry_id: Optional[str] = None  # UUID of saved journal entry, for outcome tracking
