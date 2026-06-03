@@ -16,15 +16,6 @@ class JournalScreen extends StatefulWidget {
 }
 
 class _JournalScreenState extends State<JournalScreen> {
-  // Map of node name to available interventions (primary + variants)
-  static const Map<String, List<String>> INTERVENTION_VARIANTS = {
-    'Stress': ['Physiological Sigh', 'Somatic Reset'],
-    'Anxiety': ['5-4-3-2-1 Grounding', 'Somatic Reset'],
-    'Procrastination': ['The 5-Minute Sprint', 'Activation Burst'],
-    'Overwhelm': ['Brain Dump', 'Activation Burst'],
-    'Numbness': ['Temperature Shock', 'Sensation Snap'],
-  };
-
   // Complete catalog of all interventions with their details (primary + movement variants)
   static const Map<String, Map<String, dynamic>> INTERVENTION_CATALOG = {
     'Physiological Sigh': {
@@ -94,7 +85,7 @@ class _JournalScreenState extends State<JournalScreen> {
   String _riskLevel = 'Low';
   bool _isLoading = false;
   String _aiReasoning = '';
-  int _currentInterventionIndex = 0;  // Track which variant is showing
+  int _alternativeIndex = -1; // -1 = primary; 0,1,... = alternatives[index]
   late final GoalService _goalService;
   late Future<Map<String, dynamic>> _streakFuture;
 
@@ -103,7 +94,6 @@ class _JournalScreenState extends State<JournalScreen> {
     super.initState();
     _goalService = GoalService();
     _streakFuture = _loadStreakData();
-    _validateInterventionCatalog();
   }
 
   @override
@@ -275,184 +265,210 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   void _showStandardInterventionDialog(Map<String, dynamic> data) {
-    _currentInterventionIndex = 0; // Reset to primary intervention on dialog open
-    final String nodeDetected = data['detected_node'] ?? 'Unknown';
-    final bool loopDetected = data['loop_detected'] == true;
+    _alternativeIndex = -1;
 
-    // Variants only apply when a loop is actually detected
-    final List<String>? variants = INTERVENTION_VARIANTS[nodeDetected];
-    final bool hasVariants = loopDetected && variants != null && variants.length > 1;
-
-    // Callback to rebuild dialog with next variant
-    void _cycleToNextVariant() {
-      setState(() {
-        if (hasVariants) {
-          _currentInterventionIndex = (_currentInterventionIndex + 1) % variants!.length;
-        }
-      });
-      // Close current dialog and reopen with new variant
-      Navigator.pop(context);
-      _showStandardInterventionDialog(data);
-    };
-
-    // Get the current intervention title based on variant index
-    String currentTitle;
-    if (hasVariants) {
-      currentTitle = variants![_currentInterventionIndex];
-    } else {
-      currentTitle = data['intervention_title'] ?? 'Pattern Break';
-    }
-
-    // Look up the full intervention details by title
-    final intervention = _getInterventionByTitle(currentTitle);
-    final String title = intervention['title'] ?? currentTitle;
-    final String task = intervention['task'] ?? 'Take a moment to breathe.';
-    final String education = intervention['education'] ?? '';
-    final String interventionType = intervention['type'] ?? 'other';
-
-    final bool isBreathing = title.contains('Sigh') || title.contains('Breathing');
-    final bool isWater = title.contains('Bio-Sync') || title.contains('Needs');
-    final bool isMovement = interventionType == 'movement';
+    final List<dynamic>? rawAlternatives = data['alternatives'] as List<dynamic>?;
+    final List<Map<String, dynamic>> alternatives = rawAlternatives
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ??
+        [];
+    final List<dynamic>? rawSteps = data['msc_steps'] as List<dynamic>?;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        final String? educationInfo = data['education_info'] as String?;
+      builder: (dialogContext) {
+        bool showSteps = false;
 
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                isBreathing
-                    ? Icons.air
-                    : (isMovement ? Icons.directions_run : (isWater ? Icons.water_drop : Icons.psychology)),
-                color: Colors.blueAccent,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final bool isExhausted = alternatives.isEmpty
+                ? _alternativeIndex >= 0
+                : _alternativeIndex >= alternatives.length;
+
+            final Map<String, dynamic> content;
+            if (!isExhausted && _alternativeIndex >= 0) {
+              content = alternatives[_alternativeIndex];
+            } else if (isExhausted) {
+              content = {};
+            } else {
+              content = {
+                'title': data['intervention_title'] ?? 'Pattern Break',
+                'task': data['intervention_task'] ?? 'Take a moment to breathe.',
+                'education': data['education_info'] ?? '',
+                'type': data['intervention_type'] ?? 'other',
+              };
+            }
+
+            final String title = content['title'] as String? ?? 'Pattern Break';
+            final String task = content['task'] as String? ?? '';
+            final String education = content['education'] as String? ?? '';
+            final String interventionType = content['type'] as String? ?? 'other';
+
+            final bool isBreathing = title.contains('Sigh') || title.contains('Breathing');
+            final bool isWater = title.contains('Bio-Sync') || title.contains('Needs');
+            final bool isMovement = interventionType == 'movement';
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-            ],
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 25),
-                if (isBreathing) const BreathingCircle(),
-                if (educationInfo != null && educationInfo.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    title: const Text('Why this works (neuroscience)'),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          educationInfo,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blueGrey.shade800,
-                          ),
-                        ),
-                      ),
-                    ],
+              title: Row(
+                children: [
+                  Icon(
+                    isBreathing
+                        ? Icons.air
+                        : (isMovement
+                            ? Icons.directions_run
+                            : (isWater ? Icons.water_drop : Icons.psychology)),
+                    color: Colors.blueAccent,
                   ),
-                ],
-                // Show variant indicator if available
-                if (hasVariants) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    '${_currentInterventionIndex + 1} of ${variants!.length} approaches',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
-                      fontStyle: FontStyle.italic,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isExhausted ? 'All suggestions tried' : title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                   ),
                 ],
-                // Personalization cards
-                if (data['personal_loop'] != null) ...[
-                  const SizedBox(height: 16),
-                  LoopPatternCard(personalLoop: data['personal_loop']),
-                ],
-                if (data['intervention_effectiveness'] != null) ...[
-                  const SizedBox(height: 16),
-                  EffectivenessCard(
-                    interventionEffectiveness: data['intervention_effectiveness'],
-                    interventionTitle: title,
-                  ),
-                ],
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-          actions: [
-            if (hasVariants)
-              TextButton(
-                onPressed: _cycleToNextVariant,
-                child: const Text(
-                  "Try a different approach",
-                  style: TextStyle(color: Colors.blueAccent),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isExhausted) ...[
+                      const Text(
+                        "You've tried all the suggestions. Consider reaching out to someone you trust.",
+                        style: TextStyle(fontSize: 15),
+                      ),
+                    ] else ...[
+                      Text(
+                        task,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 25),
+                      if (isBreathing) const BreathingCircle(),
+                      if (education.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: const Text('Why this works (neuroscience)'),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                education,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.blueGrey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (rawSteps != null && rawSteps.isNotEmpty && _alternativeIndex < 0) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () => setDialogState(() => showSteps = !showSteps),
+                          child: Text(
+                            showSteps ? 'Hide guidance' : 'Show full guidance',
+                            style: const TextStyle(color: Colors.blueAccent),
+                          ),
+                        ),
+                        if (showSteps)
+                          ...rawSteps.map((s) {
+                            final step = Map<String, dynamic>.from(s as Map);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    step['name'] as String? ?? '',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    step['task'] as String? ?? '',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
+                      if (data['personal_loop'] != null) ...[
+                        const SizedBox(height: 16),
+                        LoopPatternCard(personalLoop: data['personal_loop']),
+                      ],
+                      if (data['intervention_effectiveness'] != null) ...[
+                        const SizedBox(height: 16),
+                        EffectivenessCard(
+                          interventionEffectiveness: data['intervention_effectiveness'],
+                          interventionTitle: title,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                    ],
+                  ],
                 ),
               ),
-            TextButton(
-              onPressed: () {
-                _sendFeedback(false);
-                Navigator.pop(context);
-                _currentInterventionIndex = 0;
-              },
-              child: const Text(
-                "Didn't help",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _sendFeedback(true);
-                Navigator.pop(context);
-                _currentInterventionIndex = 0;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Loop Broken! Proud of you.'),
-                    backgroundColor: Colors.green,
+              actions: [
+                TextButton(
+                  onPressed: () => setDialogState(() {
+                    showSteps = false;
+                    setState(() => _alternativeIndex++);
+                  }),
+                  child: const Text(
+                    "This isn't helping",
+                    style: TextStyle(color: Colors.grey),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('I feel better'),
-            ),
-          ],
+                ),
+                if (!isExhausted) ...[
+                  TextButton(
+                    onPressed: () {
+                      _sendFeedback(false);
+                      Navigator.pop(context);
+                      setState(() => _alternativeIndex = -1);
+                    },
+                    child: const Text(
+                      "Didn't help",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      _sendFeedback(true);
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.pop(context);
+                      setState(() => _alternativeIndex = -1);
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Loop Broken! Proud of you.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('I feel better'),
+                  ),
+                ],
+              ],
+            );
+          },
         );
       },
     );
-  }
-
-  // Helper method to validate that all interventions in INTERVENTION_VARIANTS exist in INTERVENTION_CATALOG
-  void _validateInterventionCatalog() {
-    INTERVENTION_VARIANTS.forEach((node, interventions) {
-      for (String title in interventions) {
-        assert(INTERVENTION_CATALOG.containsKey(title),
-            'Missing intervention in catalog: $title (from $node)');
-      }
-    });
   }
 
   // Helper method to look up intervention by title from the class-level catalog
