@@ -21,6 +21,7 @@ from .crisis import CrisisSafetyService
 from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
 from .models import (
+    AlternativeIntervention,
     AnalysisRequest,
     AnalysisResponse,
     CrisisHotline,
@@ -217,6 +218,16 @@ def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
     return (base_pos, f"Node {base_pos} of 8 — {base_label.split(' — ')[1] if ' — ' in base_label else base_label}")
 
 
+def get_alternatives(state: str, sublabel: str | None) -> list[dict]:
+    """Return up to 2 fallback interventions for the given state from the catalog."""
+    state_entry = INTERVENTIONS.get(state)
+    if not state_entry:
+        return []
+    if isinstance(state_entry, dict) and "alternatives" in state_entry:
+        return list(state_entry["alternatives"])[:2]
+    return []
+
+
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_behavior(body: AnalysisRequest, request: Request, db: BehavioralStateManager = Depends(get_db)):
     request_id = getattr(request.state, "request_id", "")
@@ -359,10 +370,10 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         if len(variant_list) > 1:
             variants = variant_list
 
-    # 6. Populate MSC steps for Shame interventions
+    # 6. Populate MSC steps for Shame interventions (always-on)
     msc_steps = None
     shame_safety_alert = None
-    if FEATURE_SHAME_PROTOCOL and node == "Shame":
+    if node == "Shame":
         raw_steps = INTERVENTIONS.get("Shame", {}).get("msc_steps")
         if raw_steps:
             # Convert education dicts to strings (use "introduce" depth for MSC display)
@@ -380,6 +391,10 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         except Exception:
             logger.error("Shame count check failed", exc_info=True, extra={"request_id": request_id})
             shame_safety_alert = False
+
+    # 6a. Populate alternatives for "This isn't helping" cycling
+    raw_alternatives = get_alternatives(node, sublabel)
+    alternatives = [AlternativeIntervention(**alt) for alt in raw_alternatives] if raw_alternatives else None
 
     # 6b. Determine education depth from DB seen_count (when flag enabled) or default to "introduce"
     education_depth = "introduce"
@@ -479,6 +494,7 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "intervention_variants": variants,
         "msc_steps": msc_steps,
         "shame_safety_alert": shame_safety_alert,
+        "alternatives": alternatives,
         "movement_protocol": movement_protocol,
         "journal_entry_id": entry_id,
         "personal_loop": personal_loop,
