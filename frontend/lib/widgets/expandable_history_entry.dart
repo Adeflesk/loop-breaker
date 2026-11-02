@@ -91,7 +91,7 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -112,8 +112,8 @@ class _ExpandableHistoryEntryState extends State<ExpandableHistoryEntry>
                 height: 40,
                 decoration: BoxDecoration(
                   color: success
-                      ? const Color(0xFF5B9B96).withOpacity(0.1)
-                      : Colors.grey.withOpacity(0.05),
+                      ? const Color(0xFF5B9B96).withValues(alpha: 0.1)
+                      : Colors.grey.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(

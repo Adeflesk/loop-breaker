@@ -100,6 +100,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             onRefresh: () async {
               setState(() {
                 _historyFuture = ApiClient.fetchHistory(useCache: false);
+                _insightFuture = ApiClient.fetchInsight();
+                _statsFuture = ApiClient.fetchStats();
+                _loopPathFuture = ApiClient.getLoopPath(days: 30);
+                _weeklyComparisonFuture = Future.wait([
+                  _fetchCurrentWeekSummary(),
+                  _fetchPreviousWeekSummary(),
+                ]);
               });
               await _historyFuture;
             },
@@ -219,7 +226,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -249,7 +256,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           dotData: const FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: const Color(0xFF5B9B96).withOpacity(0.08),
+                            color: const Color(0xFF5B9B96).withValues(alpha: 0.08),
                           ),
                         ),
                       ],
@@ -397,12 +404,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -415,7 +422,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -556,7 +563,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

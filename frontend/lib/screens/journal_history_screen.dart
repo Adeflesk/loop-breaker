@@ -195,7 +195,7 @@ class _EntryCardState extends State<_EntryCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.2),
+        color: badgeColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -352,10 +352,10 @@ class _EntryCardState extends State<_EntryCard> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5B9B96).withOpacity(0.08),
+                    color: const Color(0xFF5B9B96).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: const Color(0xFF5B9B96).withOpacity(0.2),
+                      color: const Color(0xFF5B9B96).withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -401,7 +401,7 @@ class _EntryCardState extends State<_EntryCard> {
                           : null,
                       style: OutlinedButton.styleFrom(
                         backgroundColor: _currentOutcome == 'helped'
-                            ? Colors.green.withOpacity(0.2)
+                            ? Colors.green.withValues(alpha: 0.2)
                             : null,
                       ),
                       child: Text(
@@ -419,7 +419,7 @@ class _EntryCardState extends State<_EntryCard> {
                           : null,
                       style: OutlinedButton.styleFrom(
                         backgroundColor: _currentOutcome == 'neutral'
-                            ? Colors.blue.withOpacity(0.2)
+                            ? Colors.blue.withValues(alpha: 0.2)
                             : null,
                       ),
                       child: Text(
@@ -437,7 +437,7 @@ class _EntryCardState extends State<_EntryCard> {
                           : null,
                       style: OutlinedButton.styleFrom(
                         backgroundColor: _currentOutcome == "didn't help"
-                            ? Colors.orange.withOpacity(0.2)
+                            ? Colors.orange.withValues(alpha: 0.2)
                             : null,
                       ),
                       child: Text(
