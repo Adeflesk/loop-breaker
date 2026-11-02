@@ -85,10 +85,10 @@ FEATURE_MOVEMENT_PROTOCOLS = os.getenv("FEATURE_MOVEMENT_PROTOCOLS", "false").lo
 FEATURE_CRISIS_SAFETY = os.getenv("FEATURE_CRISIS_SAFETY", "true").lower() == "true"
 
 # Phase 6 Feature Flags
-FEATURE_PROGRESSIVE_EDUCATION = os.getenv("FEATURE_PROGRESSIVE_EDUCATION", "false").lower() == "true"
-FEATURE_LOOP_PATH = os.getenv("FEATURE_LOOP_PATH", "false").lower() == "true"
+FEATURE_PROGRESSIVE_EDUCATION = os.getenv("FEATURE_PROGRESSIVE_EDUCATION", "true").lower() == "true"
+FEATURE_LOOP_PATH = os.getenv("FEATURE_LOOP_PATH", "true").lower() == "true"
 FEATURE_WEEKLY_TRACKING = os.getenv("FEATURE_WEEKLY_TRACKING", "true").lower() == "true"
-FEATURE_DAILY_CHECK = os.getenv("FEATURE_DAILY_CHECK", "false").lower() == "true"
+FEATURE_DAILY_CHECK = os.getenv("FEATURE_DAILY_CHECK", "true").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -621,6 +621,22 @@ async def create_daily_check(
     except Exception:
         logger.error("Daily check creation failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Daily check service unavailable")
+
+
+@app.get("/daily-check-correlation")
+async def get_daily_check_correlation(
+    days: int = Query(30, ge=7, le=365),
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_DAILY_CHECK:
+        raise HTTPException(status_code=404, detail="Daily check feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_daily_check_correlation(days=days)
+    except Exception:
+        logger.error("Daily check correlation failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Daily check correlation service unavailable")
 
 
 @app.post("/feedback")

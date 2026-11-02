@@ -482,6 +482,11 @@ class BehavioralStateManager:
                             "Address this first to shift back into executive control."
                         )
 
+                    if missing_need is None:
+                        correlation = self.get_daily_check_correlation()
+                        if correlation.get("top_correlate"):
+                            missing_need = correlation["top_correlate"]
+
                     return {
                         "top_loop": record["state"],
                         "count": record["loop_count"],
@@ -655,7 +660,11 @@ class BehavioralStateManager:
 
         try:
             with self.driver.session() as session:
-                session.run("MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome DETACH DELETE n")
+                session.run(
+                    "MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome "
+                    "OR n:JournalEntry OR n:ThoughtRecord OR n:DailyCheck "
+                    "DETACH DELETE n"
+                )
             self.is_available = True
             return True
         except Exception:
@@ -889,10 +898,10 @@ class BehavioralStateManager:
 
         try:
             import uuid
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             event_id = str(uuid.uuid4())
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(timezone.utc).isoformat()
 
             query = """
             CREATE (c:CrisisEvent {
