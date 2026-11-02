@@ -144,8 +144,9 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
                   record['balanced_thought']?.toString() ?? '';
               final String linkedNode =
                   record['linked_node']?.toString() ?? 'Unlinked';
+              final String rawTime = record['timestamp']?.toString() ?? '';
               final String timeStr =
-                  (record['timestamp']?.toString() ?? '').substring(0, 10);
+                  rawTime.length >= 10 ? rawTime.substring(0, 10) : rawTime;
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -158,7 +159,7 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
                     ),
@@ -175,7 +176,7 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD89E6F).withOpacity(0.1),
+                      color: const Color(0xFFD89E6F).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Center(

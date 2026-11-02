@@ -36,12 +36,6 @@ INTERVENTIONS = {
             },
             "type": "cognitive"
         },
-        "movement": {
-            "title": "2-Minute Body Break",
-            "task": "Stand up and do 10 jumping jacks, 5 burpees, or 30 seconds of dancing. Let your body get activated and energized.",
-            "education": "Procrastination often reflects low activation. A quick movement burst wakes up your prefrontal cortex, shifts you from 'freeze' to 'go' mode, and makes the task feel more approachable.",
-            "type": "movement"
-        },
         None: {
             "title": "The 5-Minute Sprint",
             "task": "Pick the smallest sub-task and do it for exactly 5 minutes. You can stop after that.",
@@ -80,12 +74,6 @@ INTERVENTIONS = {
             },
             "type": "grounding"
         },
-        "movement": {
-            "title": "Vigorous Physical Discharge",
-            "task": "Do 2 minutes of intense movement: jumping jacks, dancing, stair climbing, or running in place. Move until you feel your nervous system shift.",
-            "education": "Anxiety is trapped activation. Vigorous movement channels nervous energy into productive physical exertion, allowing your body to complete its threat-response cycle and downshift.",
-            "type": "movement"
-        },
         None: {
             "title": "5-4-3-2-1 Grounding",
             "task": "Name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you can taste.",
@@ -113,12 +101,6 @@ INTERVENTIONS = {
                 "deepen": "Burnout is parasympathetic exhaustion—your vagal tone (ability to engage parasympathetic) has dropped. Complete rest allows your PNS to rebuild its capacity. The 10-minute window is long enough for parasympathetic rebound without rumination."
             },
             "type": "breathing"
-        },
-        "movement": {
-            "title": "Cortisol Discharge Walk",
-            "task": "Take a 10-minute walk at a steady, slightly elevated pace. Focus on feeling your feet connect with the ground with each step.",
-            "education": "Stress elevates cortisol. Rhythmic movement (especially walking) is one of the fastest ways to metabolize cortisol and activate your parasympathetic nervous system.",
-            "type": "movement"
         },
         None: {
             "title": "Physiological Sigh",
@@ -204,12 +186,6 @@ INTERVENTIONS = {
             },
             "type": "cognitive"
         },
-        "movement": {
-            "title": "Tension Release Shake",
-            "task": "Stand up. Vigorously shake out your entire body—arms, legs, torso—for 30 seconds. Then take 5 slow breaths.",
-            "education": "Overwhelm locks your nervous system in place. Vigorous shaking physically releases stored tension, breaks the freeze response, and restores your sense of agency.",
-            "type": "movement"
-        },
         None: {
             "title": "Brain Dump",
             "task": "Write down every single tiny thing on your mind for 2 minutes. Don't organize them, just dump them.",
@@ -239,7 +215,39 @@ INTERVENTIONS = {
             "reinforce": "Restlessness escalates when unaddressed; your system gets more agitated. Vigorous movement gives your arousal a purpose, depleting the drive to fidget.",
             "deepen": "Restlessness reflects elevated norepinephrine (arousal). Intense aerobic exercise depletes catecholamine stores and triggers endorphin release, resetting your arousal set point. The physical exertion provides proof to your amygdala that the threat has been 'handled.'"
         },
-        "type": "movement"
+        "type": "movement",
+        "zones": {
+            "Zone 1": {
+                "title": "Gentle Activation",
+                "task": "Walk around for 2 minutes, then do 10 gentle arm circles and 10 slow shoulder rolls. Total: 3-4 minutes.",
+                "education": {
+                    "introduce": "Restlessness is your body signaling it needs to move. Light, flowing movement can help discharge this energy without overwhelming your system.",
+                    "reinforce": "Gentle activation works by stimulating your proprioceptive system (body awareness). Arm circles and shoulder rolls increase blood flow while keeping intensity low, perfect for when you're recovering or feeling fragile.",
+                    "deepen": "The mechanics: gentle movement activates your parasympathetic nervous system through rhythmic, predictable motion. This gives restlessness a constructive outlet while maintaining calm."
+                },
+                "type": "movement",
+            },
+            "Zone 2": {
+                "title": "Micro-Movement Protocol",
+                "task": "Stand up and do 20 jumping jacks, or run up and down stairs 3 times. 2-3 minutes total.",
+                "education": {
+                    "introduce": "Restlessness is kinetic energy your nervous system is producing. Moderate-intensity movement discharges this energy efficiently, helping you reset.",
+                    "reinforce": "Jumping jacks or stair runs create a full-body activation that burns through excess arousal quickly. The rhythmic impact also triggers the vagal brake, which helps your nervous system downshift after the activity.",
+                    "deepen": "Moderate-intensity movement triggers a cathartic discharge of pent-up tension through sympathetic activation followed by rapid parasympathetic recovery. This cycle resets your baseline arousal level."
+                },
+                "type": "movement",
+            },
+            "Zone 3": {
+                "title": "Intense Cathartic Release",
+                "task": "Sprint up stairs 5 times fast, or do 50 jumping jacks with intensity, or a 2-minute burst of high-intensity movement (e.g., jumping rope, burpees). 3-4 minutes total.",
+                "education": {
+                    "introduce": "When restlessness is intense, you need proportional intensity to match and then discharge it. High-intensity movement creates a complete nervous system reset.",
+                    "reinforce": "Intense movement causes rapid muscle fatigue, which forces your nervous system to downshift dramatically once you stop. The contrast between high intensity and rest triggers deep parasympathetic activation.",
+                    "deepen": "High-intensity exercise floods your system with endorphins and catecholamines, creating a marked contrast with the post-exercise recovery state. This sharp switch recalibrates your nervous system to a lower baseline."
+                },
+                "type": "movement",
+            },
+        },
     },
     "Isolation": {
         "title": "The Low-Stakes Connection",

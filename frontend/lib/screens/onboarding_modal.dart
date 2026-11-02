@@ -192,8 +192,8 @@ class OnboardingPageView extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            page.color.withOpacity(0.05),
-            page.color.withOpacity(0.02),
+            page.color.withValues(alpha: 0.05),
+            page.color.withValues(alpha: 0.02),
           ],
         ),
       ),
@@ -207,7 +207,7 @@ class OnboardingPageView extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: page.color.withOpacity(0.15),
+                color: page.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(

@@ -36,7 +36,6 @@ class _BreathingCircleState extends State<BreathingCircle>
   @override
   Widget build(BuildContext context) {
     const Color primaryTeal = Color(0xFF5B9B96);
-    const Color accentWarm = Color(0xFFD89E6F);
 
     return AnimatedBuilder(
       animation: _scaleAnimation,
@@ -49,14 +48,14 @@ class _BreathingCircleState extends State<BreathingCircle>
               height: 140 + (80 * _scaleAnimation.value),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryTeal.withOpacity(0.08),
+                color: primaryTeal.withValues(alpha: 0.08),
                 border: Border.all(
-                  color: primaryTeal.withOpacity(0.3),
+                  color: primaryTeal.withValues(alpha: 0.3),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryTeal.withOpacity(_opacityAnimation.value),
+                    color: primaryTeal.withValues(alpha: _opacityAnimation.value),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),

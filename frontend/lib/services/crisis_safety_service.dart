@@ -4,7 +4,7 @@
 /// Matches backend CrisisSafetyService behavior in Python.
 class CrisisSafetyService {
   /// Default crisis indicator keywords (28 total)
-  static const List<String> DEFAULT_KEYWORDS = [
+  static const List<String> defaultKeywords = [
     'suicide',
     'kill myself',
     'kill my self',
@@ -36,27 +36,27 @@ class CrisisSafetyService {
   ];
 
   /// Minimum text length to analyze (chars < this are skipped)
-  static const int MIN_TEXT_LENGTH = 10;
+  static const int minTextLength = 10;
 
   /// Keywords to search for (may be customized or use defaults)
   final List<String> keywords;
 
   /// Constructor with optional custom keywords
-  /// If customKeywords is null or empty, uses DEFAULT_KEYWORDS.
+  /// If customKeywords is null or empty, uses defaultKeywords.
   CrisisSafetyService({List<String>? customKeywords})
       : keywords = (customKeywords != null && customKeywords.isNotEmpty)
             ? customKeywords
-            : DEFAULT_KEYWORDS;
+            : defaultKeywords;
 
   /// Detects crisis indicators in the given text.
   ///
   /// Returns a tuple (is_crisis, detected_keywords):
   /// - is_crisis: bool, true if any crisis keywords detected
-  /// - detected_keywords: List<String>, deduped keywords found (empty if none)
+  /// - detected_keywords: `List<String>`, deduped keywords found (empty if none)
   ///
   /// Skips analysis if:
   /// - text is null or empty
-  /// - text length < MIN_TEXT_LENGTH
+  /// - text length < minTextLength
   ///
   /// Matching is case-insensitive with word boundaries.
   (bool, List<String>) detectCrisis(String? text) {
@@ -66,7 +66,7 @@ class CrisisSafetyService {
     }
 
     // Skip if text is too short (avoid accidental matches)
-    if (text.length < MIN_TEXT_LENGTH) {
+    if (text.length < minTextLength) {
       return (false, []);
     }
 

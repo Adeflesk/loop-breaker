@@ -21,8 +21,8 @@ class ApiClient {
   static const int _defaultQuickTimeoutSeconds = 30;   // Most endpoints (insight, stats, feedback, etc)
 
   // Local cache for offline support
-  static Map<String, dynamic> _cache = {};
-  static Map<String, DateTime> _cacheTimestamps = {};
+  static final Map<String, dynamic> _cache = {};
+  static final Map<String, DateTime> _cacheTimestamps = {};
   static const Duration _cacheExpiry = Duration(minutes: 30);
 
   static http.Client get _httpClient => clientOverride ?? _defaultClient;
@@ -210,8 +210,15 @@ class ApiClient {
   }
 
   static Future<bool> resetData() async {
-    final response = await _httpClient.delete(_uri('/reset'));
-    return response.statusCode == 200;
+    final response = await _httpClient.delete(
+      _uri('/reset'),
+      headers: {'X-Confirm-Reset': 'CONFIRM'},
+    );
+    if (response.statusCode == 200) {
+      clearCache();
+      return true;
+    }
+    return false;
   }
 
   static Future<void> createThoughtRecord(Map<String, dynamic> data) async {
@@ -289,20 +296,16 @@ class ApiClient {
     String outcome, {
     String? notes,
   }) async {
-    try {
-      return await _withRetry(() async {
-        final response = await _httpClient.patch(
-          _uri('/journal-entries/$entryId/outcome'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'outcome': outcome, 'notes': notes}),
-        );
-        if (response.statusCode != 200) {
-          throw Exception('Journal outcome failed with status ${response.statusCode}');
-        }
-      });
-    } catch (e) {
-      debugPrint('Journal outcome error: $e');
-    }
+    return _withRetry(() async {
+      final response = await _httpClient.patch(
+        _uri('/journal-entries/$entryId/outcome'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'outcome': outcome, 'notes': notes}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Journal outcome failed with status ${response.statusCode}');
+      }
+    });
   }
 
   static Future<Map<String, dynamic>> getWeeklySummary(String weekStart) async {
@@ -364,6 +367,26 @@ class ApiClient {
         throw Exception('Daily check failed with status ${response.statusCode}');
       }
     });
+  }
+
+  static Future<Map<String, dynamic>> getDailyCheckCorrelation({int days = 30}) async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(
+            _uri('/daily-check-correlation?days=$days'),
+          );
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Daily check correlation failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Daily check correlation fetch error: $e');
+    }
+    return {};
   }
 }
 

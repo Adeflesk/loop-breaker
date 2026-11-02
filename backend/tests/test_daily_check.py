@@ -191,6 +191,24 @@ class TestDailyCheckFeatureFlag:
         response = client.post("/daily-check", json=_VALID_PAYLOAD)
         assert response.status_code == 201
 
+    def test_correlation_endpoint_returns_data_when_flag_enabled(self, monkeypatch):
+        """GET /daily-check-correlation returns correlation dict when FEATURE_DAILY_CHECK=True."""
+        monkeypatch.setattr(app_main, "FEATURE_DAILY_CHECK", True)
+        fake_db = _FakeDB(correlation={"top_correlate": "sleep_hours", "correlates": {"sleep_hours": 0.8}})
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
+        client = TestClient(app_main.app)
+        response = client.get("/daily-check-correlation?days=14")
+        assert response.status_code == 200
+        assert response.json()["top_correlate"] == "sleep_hours"
+        assert fake_db.last_correlation_days == 14
+
+    def test_correlation_endpoint_returns_404_when_flag_disabled(self, monkeypatch):
+        """GET /daily-check-correlation returns 404 when FEATURE_DAILY_CHECK=False."""
+        monkeypatch.setattr(app_main, "FEATURE_DAILY_CHECK", False)
+        client = TestClient(app_main.app)
+        response = client.get("/daily-check-correlation")
+        assert response.status_code == 404
+
 
 class TestDbCreateDailyCheck:
     """Unit tests for db.create_daily_check()."""

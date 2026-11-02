@@ -100,13 +100,29 @@ Every intervention is tailored to the user's personal behavioral patterns and hi
 
 - **Your Loop Pattern** — Shows your detected emotional cycle (e.g., "Stress → Procrastination → Shame repeats every 4.5 hours")
 - **Your Track Record** — Displays effectiveness of each intervention you've tried (e.g., "5-Minute Sprint: 80% effective")
-- **Personalized Teaching** — Education text references your specific situation (e.g., "For YOUR Procrastination...")
+- **Personalized Teaching** — Education text depth advances as the user engages: Introduce → Reinforce → Deepen
 
 The feature gracefully appears only when sufficient journal data is available, ensuring new users don't see incomplete information.
 
-[View Complete Feature Documentation →](docs/FEATURE-PERSONALIZED-EDUCATION-COMPLETE.md)
+🧭 Intervention Guidance
 
-🛡 Privacy & Ethics
+The intervention card offers two layers of progressive disclosure:
+
+- **Show full guidance** — Expands a step-by-step walkthrough (e.g., the 3-step Mindful Self-Compassion protocol for Shame). Only shown when detailed steps are available.
+- **This isn't helping** — Cycles through up to 2 alternative interventions for the same state, grounded in the *Rewire* neuroscience framework (Nicole Vignola). When alternatives are exhausted, a safe fallback message is shown.
+
+Interventions for Shame draw from two frameworks: Kristin Neff's MSC protocol (primary) and Rewire's neurohacks (Cognitive Reframe, Zone 2 Walk as alternatives).
+
+🛡 Crisis Safety Layer
+
+Dual-layer crisis detection protects users in distress:
+
+- Backend scans each entry for 28 crisis keywords (suicide, self-harm, overdose, hopelessness, abuse/violence)
+- When detected, `/analyze` returns `crisis_detected: true` with crisis resources (988, Crisis Text Line, IASP)
+- Frontend shows a crisis dialog before proceeding to the intervention
+- All crisis events are logged in Neo4j for clinical review
+
+🔒 Privacy & Ethics
 Zero-Cloud AI: All sentiment analysis stays on-device via Ollama.
 
 Encryption: Personal health data must be encrypted at rest using AES-256.

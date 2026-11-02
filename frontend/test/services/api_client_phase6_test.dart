@@ -136,4 +136,62 @@ void main() {
       );
     });
   });
+
+  group('ApiClient.getDailyCheckCorrelation', () {
+    test('returns correlation map on 200', () async {
+      ApiClient.clientOverride = MockClient((request) async {
+        expect(request.url.path, endsWith('/daily-check-correlation'));
+        expect(request.url.queryParameters['days'], '14');
+        return http.Response(
+          jsonEncode({
+            'top_correlate': 'low_sleep',
+            'correlates': {'low_sleep': 2.0},
+          }),
+          200,
+        );
+      });
+
+      final result = await ApiClient.getDailyCheckCorrelation(days: 14);
+      expect(result['top_correlate'], 'low_sleep');
+      expect((result['correlates'] as Map)['low_sleep'], 2.0);
+    });
+
+    test('returns empty map on error', () async {
+      ApiClient.clientOverride = MockClient((_) async {
+        return http.Response('Error', 503);
+      });
+
+      final result = await ApiClient.getDailyCheckCorrelation();
+      expect(result, isEmpty);
+    });
+  });
+
+  group('ApiClient.resetData', () {
+    test('sends X-Confirm-Reset header and clears cache on 200', () async {
+      String? receivedHeader;
+      ApiClient.clientOverride = MockClient((request) async {
+        if (request.url.path.endsWith('/history')) {
+          return http.Response(
+            jsonEncode([
+              {'state': 'Stress', 'confidence': 0.8}
+            ]),
+            200,
+          );
+        }
+        if (request.url.path.endsWith('/reset')) {
+          receivedHeader = request.headers['X-Confirm-Reset'];
+          return http.Response(jsonEncode({'status': 'Database reset successful'}), 200);
+        }
+        return http.Response('', 404);
+      });
+
+      // Populate cache
+      final cachedHistory = await ApiClient.fetchHistory();
+      expect(cachedHistory, isNotEmpty);
+
+      final resetResult = await ApiClient.resetData();
+      expect(resetResult, isTrue);
+      expect(receivedHeader, 'CONFIRM');
+    });
+  });
 }

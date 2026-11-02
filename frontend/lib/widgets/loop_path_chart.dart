@@ -70,7 +70,9 @@ class _TimelineEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = timestamp.split('T')[1].substring(0, 5); // HH:MM
+    final parts = timestamp.split('T');
+    final rawTime = parts.length > 1 ? parts[1] : timestamp;
+    final timeStr = rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime; // HH:MM
     final confidencePercent = (confidence * 100).toInt();
 
     return Row(

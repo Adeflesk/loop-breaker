@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_modal.dart';
 
@@ -115,14 +116,37 @@ class AppHome extends StatefulWidget {
 }
 
 class _AppHomeState extends State<AppHome> {
+  static const _onboardingKey = 'has_seen_onboarding';
   bool _hasSeenOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOnboardingState();
+  }
+
+  Future<void> _loadOnboardingState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getBool(_onboardingKey) ?? false;
+      if (mounted && seen) {
+        setState(() {
+          _hasSeenOnboarding = true;
+        });
+      }
+    } catch (_) {
+      // Fallback to false if SharedPreferences is unavailable in test context
+    }
+  }
 
   void _completeOnboarding() {
     setState(() {
       _hasSeenOnboarding = true;
     });
-    // In a real app, you'd store this in SharedPreferences:
-    // await prefs.setBool('has_seen_onboarding', true);
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setBool(_onboardingKey, true),
+      onError: (_) {},
+    );
   }
 
   @override

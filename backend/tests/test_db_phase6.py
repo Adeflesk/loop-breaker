@@ -361,3 +361,165 @@ class TestGetDailyCheckCorrelation:
         db.driver = MagicMock()
         db.driver.session.side_effect = Exception("query error")
         assert db.get_daily_check_correlation() == {}
+
+
+# ---------------------------------------------------------------------------
+# get_loop_path & analyze_loop_path
+# ---------------------------------------------------------------------------
+
+class TestLoopPathDbMethods:
+
+    def test_get_loop_path_returns_formatted_entries(self):
+        records = [
+            FakeRecord({
+                "timestamp": "2026-05-01T10:00:00",
+                "state": "Stress",
+                "confidence": 0.85,
+                "has_intervention": True,
+            }),
+            FakeRecord({
+                "timestamp": "2026-05-01T12:00:00",
+                "state": "Anxiety",
+                "confidence": None,
+                "has_intervention": False,
+            }),
+        ]
+        db = _make_db(FakeResult(records))
+        path = db.get_loop_path(days=30)
+        assert len(path) == 2
+        assert path[0]["state"] == "Stress"
+        assert path[0]["confidence"] == 0.85
+        assert path[0]["has_intervention"] is True
+        assert path[1]["confidence"] == 0.0
+
+    def test_get_loop_path_returns_empty_on_exception(self):
+        db = BehavioralStateManager.__new__(BehavioralStateManager)
+        db.is_available = True
+        db.driver = MagicMock()
+        db.driver.session.side_effect = Exception("query error")
+        assert db.get_loop_path() == []
+
+    def test_analyze_loop_path_computes_cycles_and_length(self):
+        records = [
+            FakeRecord({
+                "timestamp": "2026-05-01T08:00:00",
+                "state": "Stress",
+                "confidence": 0.8,
+                "has_intervention": True,
+            }),
+            FakeRecord({
+                "timestamp": "2026-05-01T10:00:00",
+                "state": "Procrastination",
+                "confidence": 0.7,
+                "has_intervention": False,
+            }),
+            FakeRecord({
+                "timestamp": "2026-05-01T18:00:00",
+                "state": "Stress",
+                "confidence": 0.9,
+                "has_intervention": True,
+            }),
+        ]
+        db = _make_db(FakeResult(records))
+        analysis = db.analyze_loop_path(days=30)
+        assert analysis["most_common_entry"] == "Stress"
+        assert analysis["cycle_length_hours"] == 10.0
+        assert analysis["total_cycles"] == 1
+
+    def test_analyze_loop_path_empty_when_no_entries(self):
+        db = _make_db(FakeResult([]))
+        assert db.analyze_loop_path() == {}
+
+
+# ---------------------------------------------------------------------------
+# ThoughtRecord, JournalEntry, and Shame Count DB methods
+# ---------------------------------------------------------------------------
+
+class TestAdditionalDbMethods:
+
+    def test_create_thought_record_success_and_error(self):
+        db = _make_db(FakeResult([]))
+        assert db.create_thought_record("sit", "auto", "for", "against", "bal", "Stress") is True
+
+        db.driver = MagicMock()
+        db.driver.session.side_effect = Exception("fail")
+        assert db.create_thought_record("sit", "auto", "for", "against", "bal") is False
+
+    def test_get_thought_records_success_and_error(self):
+        rec = FakeRecord({
+            "timestamp": "2026-05-01T10:00:00",
+            "situation": "s",
+            "automatic_thought": "a",
+            "evidence_for": "ef",
+            "evidence_against": "ea",
+            "balanced_thought": "b",
+            "linked_node": "Stress",
+        })
+        db = _make_db(FakeResult([rec]))
+        records = db.get_thought_records(limit=10, offset=0)
+        assert len(records) == 1
+        assert records[0]["balanced_thought"] == "b"
+
+        db.driver = MagicMock()
+        db.driver.session.side_effect = Exception("fail")
+        assert db.get_thought_records() == []
+
+    def test_get_shame_count_24h(self):
+        db = _make_db(FakeResult([FakeRecord({"count": 3})]))
+        assert db.get_shame_count_24h() == 3
+
+        db.is_available = False
+        assert db.get_shame_count_24h() == 0
+
+        db.is_available = True
+        db.driver = MagicMock()
+        db.driver.session.side_effect = Exception("fail")
+        assert db.get_shame_count_24h() == 0
+
+    def test_save_and_get_journal_entries_and_outcome(self):
+        db = _make_db(FakeResult([]))
+        assert db.save_journal_entry(
+            entry_id="id-1",
+            raw_text="text",
+            detected_state="Stress",
+            sublabel="General",
+            confidence=0.8,
+            reasoning="r",
+            risk_level="Low",
+            intervention_title="Sigh",
+            intervention_type="breathing",
+        ) is True
+
+        entry_rec = FakeRecord({
+            "id": "id-1",
+            "timestamp": "2026-05-01T10:00:00",
+            "raw_text": "text",
+            "detected_state": "Stress",
+            "sublabel": "General",
+            "confidence": 0.8,
+            "reasoning": "r",
+            "risk_level": "Low",
+            "intervention_title": "Sigh",
+            "intervention_type": "breathing",
+            "user_outcome": "helped",
+            "user_notes": "",
+        })
+        db = _make_db(FakeResult([entry_rec]))
+        entries = db.get_journal_entries(limit=10)
+        assert len(entries) == 1
+        assert entries[0]["id"] == "id-1"
+
+        assert db.record_journal_outcome("id-1", "helped", "good") is True
+
+        # Unavailable & error paths
+        db.is_available = False
+        assert db.save_journal_entry("1", "t", "S", "G", 0.5, "r", "Low", "T", "b") is False
+        assert db.get_journal_entries() == []
+        assert db.record_journal_outcome("id-1", "helped") is False
+
+        db.is_available = True
+        db.driver = MagicMock()
+        db.driver.session.side_effect = Exception("fail")
+        assert db.save_journal_entry("1", "t", "S", "G", 0.5, "r", "Low", "T", "b") is False
+        assert db.get_journal_entries() == []
+        assert db.record_journal_outcome("id-1", "helped") is False
