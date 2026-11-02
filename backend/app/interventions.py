@@ -215,7 +215,39 @@ INTERVENTIONS = {
             "reinforce": "Restlessness escalates when unaddressed; your system gets more agitated. Vigorous movement gives your arousal a purpose, depleting the drive to fidget.",
             "deepen": "Restlessness reflects elevated norepinephrine (arousal). Intense aerobic exercise depletes catecholamine stores and triggers endorphin release, resetting your arousal set point. The physical exertion provides proof to your amygdala that the threat has been 'handled.'"
         },
-        "type": "movement"
+        "type": "movement",
+        "zones": {
+            "Zone 1": {
+                "title": "Gentle Activation",
+                "task": "Walk around for 2 minutes, then do 10 gentle arm circles and 10 slow shoulder rolls. Total: 3-4 minutes.",
+                "education": {
+                    "introduce": "Restlessness is your body signaling it needs to move. Light, flowing movement can help discharge this energy without overwhelming your system.",
+                    "reinforce": "Gentle activation works by stimulating your proprioceptive system (body awareness). Arm circles and shoulder rolls increase blood flow while keeping intensity low, perfect for when you're recovering or feeling fragile.",
+                    "deepen": "The mechanics: gentle movement activates your parasympathetic nervous system through rhythmic, predictable motion. This gives restlessness a constructive outlet while maintaining calm."
+                },
+                "type": "movement",
+            },
+            "Zone 2": {
+                "title": "Micro-Movement Protocol",
+                "task": "Stand up and do 20 jumping jacks, or run up and down stairs 3 times. 2-3 minutes total.",
+                "education": {
+                    "introduce": "Restlessness is kinetic energy your nervous system is producing. Moderate-intensity movement discharges this energy efficiently, helping you reset.",
+                    "reinforce": "Jumping jacks or stair runs create a full-body activation that burns through excess arousal quickly. The rhythmic impact also triggers the vagal brake, which helps your nervous system downshift after the activity.",
+                    "deepen": "Moderate-intensity movement triggers a cathartic discharge of pent-up tension through sympathetic activation followed by rapid parasympathetic recovery. This cycle resets your baseline arousal level."
+                },
+                "type": "movement",
+            },
+            "Zone 3": {
+                "title": "Intense Cathartic Release",
+                "task": "Sprint up stairs 5 times fast, or do 50 jumping jacks with intensity, or a 2-minute burst of high-intensity movement (e.g., jumping rope, burpees). 3-4 minutes total.",
+                "education": {
+                    "introduce": "When restlessness is intense, you need proportional intensity to match and then discharge it. High-intensity movement creates a complete nervous system reset.",
+                    "reinforce": "Intense movement causes rapid muscle fatigue, which forces your nervous system to downshift dramatically once you stop. The contrast between high intensity and rest triggers deep parasympathetic activation.",
+                    "deepen": "High-intensity exercise floods your system with endorphins and catecholamines, creating a marked contrast with the post-exercise recovery state. This sharp switch recalibrates your nervous system to a lower baseline."
+                },
+                "type": "movement",
+            },
+        },
     },
     "Isolation": {
         "title": "The Low-Stakes Connection",

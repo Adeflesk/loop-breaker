@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../screens/history_screen.dart';
 import '../services/api_client.dart';
 import '../services/goal_service.dart';
 import '../widgets/breathing_circle.dart';
@@ -647,17 +646,6 @@ class _JournalScreenState extends State<JournalScreen> {
       appBar: AppBar(
         title: const Text('LoopBreaker'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HistoryScreen(),
-              ),
-            ),
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showDailyCheckIn,
@@ -701,6 +689,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       snapshot.data?['success_rate']?.toDouble();
                   final String? trend = snapshot.data?['trend'];
                   final int? streak = snapshot.data?['streak'];
+                  final String? missingNeed = snapshot.data?['missing_need'];
 
                   return Card(
                     elevation: 0,
@@ -797,6 +786,29 @@ class _JournalScreenState extends State<JournalScreen> {
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (missingNeed != null && missingNeed.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.monitor_heart_outlined,
+                                    color: Color(0xFF5B9B96), size: 16),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    missingNeed == 'low_sleep'
+                                        ? 'Body-Brain Correlate: Low sleep linked to higher loop risk'
+                                        : missingNeed == 'high_stress'
+                                            ? 'Body-Brain Correlate: Elevated baseline stress'
+                                            : 'Body-Brain Correlate: Unmet $missingNeed',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ],
