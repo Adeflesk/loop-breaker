@@ -267,9 +267,12 @@ Feature-driven features use `FEATURE_*` env vars. Current flags in `backend/app/
 |------|---------|---------|
 | `FEATURE_SUBLABEL_ROUTING` | `true` | Route interventions by emotion sublabel |
 | `FEATURE_PROGRESSIVE_EDUCATION` | `true` | Depth-aware education (introduce→reinforce→deepen) |
+| `FEATURE_LOOP_PATH` | `true` | Enable `/loop-path` transition sequence endpoint |
+| `FEATURE_WEEKLY_TRACKING` | `true` | Enable `/weekly-summary` and date-range history |
+| `FEATURE_DAILY_CHECK` | `true` | Enable `/daily-check` and `/daily-check-correlation` endpoints |
 | `FEATURE_CRISIS_SAFETY` | `true` | Crisis keyword detection and resource response |
-| `FEATURE_MOVEMENT_PROTOCOLS` | `false` | Include movement protocol variant in response |
-| `FEATURE_THOUGHT_RECORDS` | `false` | Enable thought record endpoints |
+| `FEATURE_MOVEMENT_PROTOCOLS` | `false` | Include movement protocol variant in `/analyze` response |
+| `FEATURE_THOUGHT_RECORDS` | `false` | Legacy flag (thought record endpoints are active by default) |
 
 Note: `FEATURE_SHAME_PROTOCOL` was removed — `msc_steps` is now always populated for Shame.
 

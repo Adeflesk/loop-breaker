@@ -368,4 +368,43 @@ void main() {
 
     expect(find.text('Outcome recorded'), findsOneWidget);
   });
+
+  testWidgets('failed outcome PATCH reverts state and shows error snackbar', (tester) async {
+    ApiClient.clientOverride = MockClient((request) async {
+      if (request.url.path.endsWith('/journal-entries')) {
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 'entry-1',
+              'raw_text': 'Still stressed',
+              'detected_state': 'Stress',
+              'sublabel': 'General',
+              'confidence': 0.6,
+              'reasoning': 'Stress detected',
+              'risk_level': 'Low',
+              'intervention_title': 'Physiological Sigh',
+              'user_outcome': '',
+              'timestamp': '2026-05-29T10:00:00',
+            }
+          ]),
+          200,
+        );
+      }
+      if (request.url.path.contains('/outcome')) {
+        return http.Response('Service Unavailable', 503);
+      }
+      return http.Response('', 404);
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: JournalHistoryScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Detected: Stress (General)'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Helped'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Could not save outcome. Please try again.'), findsOneWidget);
+  });
 }

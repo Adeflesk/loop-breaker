@@ -209,7 +209,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Navigate through all steps and save
-    final nextFinder = () => find.ancestor(
+    Finder nextFinder() => find.ancestor(
           of: find.text('Next'),
           matching: find.bySubtype<ElevatedButton>(),
         );

@@ -148,15 +148,6 @@ class _FakeDBManager:
         self._history = []
         return True
 
-    def log_crisis_event(self, user_id: str = None, keywords: List[str] = None, detected_state: str = None, ip_address: str = None) -> str:
-        """Mock crisis event logging."""
-        import uuid
-        return str(uuid.uuid4())
-
-    def save_journal_entry(self, entry_id: str, raw_text: str, detected_state: str, sublabel: str, confidence: float, reasoning: str, risk_level: str, intervention_title: str, intervention_type: str, crisis_audit_id: str = None) -> bool:
-        """Mock journal entry saving."""
-        return True
-
     def close(self):
         """Mock close (no-op)."""
         pass

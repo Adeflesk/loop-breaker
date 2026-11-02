@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/screens/journal_screen.dart';
 import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/crisis_safety_service.dart';
 import 'package:http/http.dart' as http;
-// ignore: implementation_imports
-import 'package:http/src/client.dart';
 
 class MockHttpClient implements http.Client {
   final Map<String, http.Response> responses = {};

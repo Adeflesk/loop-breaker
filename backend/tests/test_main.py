@@ -20,7 +20,17 @@ def test_lifespan_warns_when_ollama_unavailable(caplog: pytest.LogCaptureFixture
             request = httpx.Request("GET", "http://localhost")
             raise httpx.ConnectError("Connection failed", request=request)
 
-    with patch("app.main.httpx.AsyncClient", return_value=OfflineClient()):
+    class FakeDB:
+        def get_history(self, start_date=None, end_date=None, limit=500):
+            return []
+
+        def close(self):
+            pass
+
+    with (
+        patch("app.main.httpx.AsyncClient", return_value=OfflineClient()),
+        patch("app.main.create_db_manager", return_value=FakeDB()),
+    ):
         caplog.set_level(logging.WARNING)
         with TestClient(app_main.app) as client:
             response = client.get("/history")

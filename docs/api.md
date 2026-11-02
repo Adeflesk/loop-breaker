@@ -236,8 +236,6 @@ Returns persisted journal entries with user outcomes.
 
 ### `POST /thought-record`
 
-Requires `FEATURE_THOUGHT_RECORDS=true`.
-
 **Request body**
 
 ```json
@@ -251,9 +249,25 @@ Requires `FEATURE_THOUGHT_RECORDS=true`.
 }
 ```
 
+**Response body (`201 Created`)**
+
+```json
+{ "status": "created" }
+```
+
+---
+
+### `GET /thought-records`
+
+Optional query params: `limit` (default 20), `offset` (default 0).
+
+Returns saved cognitive restructuring thought records in reverse chronological order.
+
 ---
 
 ### `POST /daily-check`
+
+Requires `FEATURE_DAILY_CHECK=true` (enabled by default).
 
 **Request body**
 
@@ -267,7 +281,7 @@ Requires `FEATURE_THOUGHT_RECORDS=true`.
 }
 ```
 
-**Response body**
+**Response body (`201 Created`)**
 
 ```json
 { "status": "recorded" }
@@ -275,9 +289,33 @@ Requires `FEATURE_THOUGHT_RECORDS=true`.
 
 ---
 
+### `GET /daily-check-correlation`
+
+Optional query param: `days` (7–365, default 30). Requires `FEATURE_DAILY_CHECK=true` (enabled by default).
+
+**Response body**
+
+```json
+{
+  "top_correlate": "low_sleep",
+  "correlates": {
+    "low_sleep": 2.0,
+    "high_stress": 1.5
+  }
+}
+```
+
+---
+
 ### `DELETE /reset`
 
-Deletes all state nodes from Neo4j.
+Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`) from Neo4j while preserving core `Node` labels.
+
+**Required header**
+
+```text
+X-Confirm-Reset: CONFIRM
+```
 
 **Response body**
 
@@ -285,5 +323,5 @@ Deletes all state nodes from Neo4j.
 { "status": "Database reset successful" }
 ```
 
-Returns `503` if the database is unavailable.
+Returns `400` if `X-Confirm-Reset: CONFIRM` is missing, or `503` if the database is unavailable.
 

@@ -207,15 +207,3 @@ void main() {
     });
   });
 }
-
-// Diagnostic test - remove after debugging
-void _diagnosticGroup() {
-  group('Diagnostic', () {
-    testWidgets('dialog appears with includeAlternatives true', (tester) async {
-      _setupMocks(analyzeData: _analyzeResponse(includeAlternatives: true));
-      await _submitJournal(tester);
-      // Check if intervention title appears (any sign of dialog)
-      expect(find.text('Mindful Self-Compassion'), findsOneWidget);
-    });
-  });
-}
