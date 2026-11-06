@@ -663,7 +663,7 @@ class BehavioralStateManager:
                 session.run(
                     "MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome "
                     "OR n:JournalEntry OR n:ThoughtRecord OR n:DailyCheck "
-                    "OR n:PracticeSession "
+                    "OR n:PracticeSession OR n:UserProfile "
                     "DETACH DELETE n"
                 )
             self.is_available = True
@@ -1164,6 +1164,62 @@ class BehavioralStateManager:
         except Exception:
             logger.error("DB get_practice_stats error", exc_info=True)
             return default_stats
+
+    def save_user_profile(
+        self,
+        values: List[str],
+        identity_statement: str,
+    ) -> bool:
+        """Persists the user's core values and identity statement."""
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    MERGE (u:UserProfile {id: 'default'})
+                    SET u.values = $values,
+                        u.identity_statement = $identity_statement,
+                        u.updated_at = datetime()
+                    """,
+                    values=values,
+                    identity_statement=identity_statement,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB save_user_profile error", exc_info=True)
+            return False
+
+    def get_user_profile(self) -> Dict[str, Any]:
+        """Returns the user's saved core values and identity statement."""
+        default_profile: Dict[str, Any] = {
+            "values": [],
+            "identity_statement": "",
+        }
+        if not self.is_available:
+            return default_profile
+        try:
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (u:UserProfile {id: 'default'})
+                    RETURN u.values AS values, u.identity_statement AS identity_statement
+                    LIMIT 1
+                    """
+                )
+                record = result.single()
+                self.is_available = True
+                if not record:
+                    return default_profile
+                return {
+                    "values": list(record.get("values") or []),
+                    "identity_statement": str(record.get("identity_statement") or ""),
+                }
+        except Exception:
+            logger.error("DB get_user_profile error", exc_info=True)
+            return default_profile
 
 def create_db_manager() -> BehavioralStateManager:
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")

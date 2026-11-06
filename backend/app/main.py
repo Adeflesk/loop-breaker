@@ -37,6 +37,8 @@ from .models import (
     PracticeStatsResponse,
     ThoughtRecordRequest,
     ThoughtRecordResponse,
+    UserProfileRequest,
+    UserProfileResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,7 @@ FEATURE_DAILY_CHECK = os.getenv("FEATURE_DAILY_CHECK", "true").lower() == "true"
 
 # Phase 7 Feature Flags
 FEATURE_DAILY_PRACTICE = os.getenv("FEATURE_DAILY_PRACTICE", "true").lower() == "true"
+FEATURE_IDENTITY_LAYER = os.getenv("FEATURE_IDENTITY_LAYER", "true").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -530,6 +533,13 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         if hasattr(db, "get_practice_stats")
         else {"practice_streak": 0, "days_practiced_this_week": 0}
     )
+    profile = (
+        db.get_user_profile()
+        if hasattr(db, "get_user_profile")
+        else {"values": [], "identity_statement": ""}
+    )
+    user_values = profile.get("values") or []
+    identity_statement = profile.get("identity_statement") or None
 
     if not stats:
         return {
@@ -543,16 +553,24 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
             "weekly_activity": weekly_activity,
             "practice_streak": int(practice_stats.get("practice_streak", 0)),
             "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
+            "values_nudge": None,
+            "identity_statement": identity_statement,
         }
 
     loop_count = stats.get("count", 0)
+    top_loop = stats.get("top_loop", "None")
+    values_nudge = (
+        f"This {top_loop} loop pulls you away from {user_values[0]} — reconnect with your anchor."
+        if user_values and top_loop and top_loop != "None"
+        else None
+    )
     return {
         "message": stats.get(
             "coaching_message",
             f"You've disrupted {loop_count} patterns in your top loop. Keep going!",
         ),
         "success_rate": round(float(stats.get("success_rate", 0)), 2),
-        "top_loop": stats.get("top_loop", "None"),
+        "top_loop": top_loop,
         "trend": stats.get("trend", "unknown"),
         "streak": int(stats.get("streak", 0)),
         "missing_need": stats.get("missing_need"),
@@ -560,6 +578,8 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         "weekly_activity": weekly_activity,
         "practice_streak": int(practice_stats.get("practice_streak", 0)),
         "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
+        "values_nudge": values_nudge,
+        "identity_statement": identity_statement,
     }
 
 @app.get("/loop-path")
@@ -821,6 +841,45 @@ async def get_practice_stats(
     except Exception:
         logger.error("Practice stats retrieval failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Practice stats service unavailable")
+
+
+@app.post("/profile")
+async def save_profile(
+    body: UserProfileRequest,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_IDENTITY_LAYER:
+        raise HTTPException(status_code=404, detail="Identity layer feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        success = db.save_user_profile(
+            values=body.values,
+            identity_statement=body.identity_statement,
+        )
+        if success:
+            return {"status": "saved"}
+        raise HTTPException(status_code=503, detail="Profile save failed")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Profile save failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Profile service unavailable")
+
+
+@app.get("/profile", response_model=UserProfileResponse)
+async def get_profile(
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_IDENTITY_LAYER:
+        raise HTTPException(status_code=404, detail="Identity layer feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_user_profile()
+    except Exception:
+        logger.error("Profile retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Profile service unavailable")
 
 
 if __name__ == "__main__":

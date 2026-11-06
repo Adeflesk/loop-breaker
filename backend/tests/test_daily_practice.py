@@ -264,3 +264,84 @@ class TestDBPracticeMethods:
         assert stats["practice_streak"] == 0
         assert stats["total_sessions"] == 0
 
+    def test_save_and_get_user_profile(self):
+        mgr, mock_session = self._make_manager()
+        assert mgr.save_user_profile(["Presence", "Focus"], "I am someone who pauses first") is True
+        mock_session.run.assert_called_once()
+
+        mock_result = MagicMock()
+        mock_result.single.return_value = {
+            "values": ["Presence", "Focus"],
+            "identity_statement": "I am someone who pauses first",
+        }
+        mock_session.run.return_value = mock_result
+        profile = mgr.get_user_profile()
+        assert profile["values"] == ["Presence", "Focus"]
+        assert profile["identity_statement"] == "I am someone who pauses first"
+
+    def test_user_profile_unavailable_and_error(self):
+        mgr, mock_session = self._make_manager()
+        mgr.is_available = False
+        assert mgr.save_user_profile(["Presence"], "Statement") is False
+        assert mgr.get_user_profile() == {"values": [], "identity_statement": ""}
+
+        mgr.is_available = True
+        mock_session.run.side_effect = RuntimeError("DB failure")
+        assert mgr.save_user_profile(["Presence"], "Statement") is False
+        mgr.is_available = True
+        assert mgr.get_user_profile() == {"values": [], "identity_statement": ""}
+
+
+class TestProfileEndpoints:
+    def test_post_and_get_profile(self, monkeypatch):
+        monkeypatch.setattr(app_main, "FEATURE_IDENTITY_LAYER", True)
+        fake_db = _FakePracticeDB()
+        fake_db.save_user_profile = lambda values, identity_statement: True
+        fake_db.get_user_profile = lambda: {
+            "values": ["Presence", "Courage"],
+            "identity_statement": "I am someone who responds with intention",
+        }
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
+        client = TestClient(app_main.app)
+        try:
+            post_resp = client.post(
+                "/profile",
+                json={
+                    "values": ["Presence", "Courage"],
+                    "identity_statement": "I am someone who responds with intention",
+                },
+            )
+            assert post_resp.status_code == 200
+            assert post_resp.json() == {"status": "saved"}
+
+            get_resp = client.get("/profile")
+            assert get_resp.status_code == 200
+            assert get_resp.json()["values"] == ["Presence", "Courage"]
+
+            insight_resp = client.get("/insight")
+            assert insight_resp.status_code == 200
+            assert "Presence" in (insight_resp.json().get("values_nudge") or "")
+            assert (
+                insight_resp.json().get("identity_statement")
+                == "I am someone who responds with intention"
+            )
+        finally:
+            app_main.app.dependency_overrides.clear()
+
+    def test_profile_returns_404_when_disabled(self, monkeypatch):
+        monkeypatch.setattr(app_main, "FEATURE_IDENTITY_LAYER", False)
+        fake_db = _FakePracticeDB()
+        app_main.app.dependency_overrides[app_main.get_db] = lambda: fake_db
+        client = TestClient(app_main.app)
+        try:
+            assert client.get("/profile").status_code == 404
+            assert (
+                client.post(
+                    "/profile",
+                    json={"values": ["Focus"], "identity_statement": "I focus"},
+                ).status_code
+                == 404
+            )
+        finally:
+            app_main.app.dependency_overrides.clear()
+

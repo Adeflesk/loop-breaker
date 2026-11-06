@@ -104,4 +104,45 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('daily_practice_reminder_time'), '08:30');
   });
+
+  testWidgets('Step 2 Edit Identity opens IdentityProfileSheet and saves values',
+      (tester) async {
+    Map<String, dynamic>? savedProfile;
+    ApiClient.clientOverride = MockClient((request) async {
+      if (request.url.path.endsWith('/profile') && request.method == 'POST') {
+        savedProfile = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode({'status': 'saved'}), 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DailyPracticeScreen(),
+      ),
+    );
+    await tester.pump();
+
+    // Advance to Step 2
+    await tester.tap(find.text('Next'));
+    await tester.pump();
+
+    expect(find.text('Edit Identity'), findsOneWidget);
+    await tester.tap(find.text('Edit Identity'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Values & Identity Anchor'), findsOneWidget);
+    await tester.tap(find.text('Presence'));
+    await tester.pump();
+    await tester.tap(find.text('Courage'));
+    await tester.pump();
+
+    await tester.tap(find.text('Save Identity Anchor'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(savedProfile?['values'], containsAll(['Presence', 'Courage']));
+    expect(find.textContaining('Core Values: Presence • Courage'), findsOneWidget);
+  });
 }

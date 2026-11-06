@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_client.dart';
 import '../services/goal_service.dart';
 import '../widgets/breathing_circle.dart';
 import '../widgets/crisis_safety_dialog.dart';
+import '../widgets/identity_profile_sheet.dart';
 import '../widgets/personalization_cards.dart';
 import '../widgets/streak_bar.dart';
 import 'daily_practice_screen.dart';
@@ -103,6 +105,18 @@ class _JournalScreenState extends State<JournalScreen> {
         setState(() {
           _insightFuture = ApiClient.fetchInsight();
         });
+        if (success && needsCheck == null) {
+          final prefs = await SharedPreferences.getInstance();
+          final statement = prefs.getString('identity_statement');
+          if (mounted && statement != null && statement.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Loop broken! $statement'),
+                backgroundColor: const Color(0xFF5B9B96),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       debugPrint('Feedback failed: $e');
@@ -649,6 +663,26 @@ class _JournalScreenState extends State<JournalScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
+            icon: const Icon(Icons.workspace_premium_outlined),
+            tooltip: 'Values & Identity',
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              final values = prefs.getStringList('user_values') ?? [];
+              final statement = prefs.getString('identity_statement') ?? '';
+              if (!context.mounted) return;
+              final updated = await IdentityProfileSheet.show(
+                context,
+                initialValues: values,
+                initialStatement: statement,
+              );
+              if (updated != null && mounted) {
+                setState(() {
+                  _insightFuture = ApiClient.fetchInsight();
+                });
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.self_improvement_outlined),
             tooltip: 'Daily Practice',
             onPressed: () async {
@@ -712,6 +746,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   final int? practiceStreak =
                       (snapshot.data?['practice_streak'] as num?)?.toInt();
                   final String? missingNeed = snapshot.data?['missing_need'];
+                  final String? valuesNudge = snapshot.data?['values_nudge'];
 
                   return Card(
                     elevation: 0,
@@ -844,6 +879,25 @@ class _JournalScreenState extends State<JournalScreen> {
                                         : missingNeed == 'high_stress'
                                             ? 'Body-Brain Correlate: Elevated baseline stress'
                                             : 'Body-Brain Correlate: Unmet $missingNeed',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (valuesNudge != null && valuesNudge.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.compass_calibration_outlined,
+                                    color: Color(0xFFD89E6F), size: 16),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    valuesNudge,
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,

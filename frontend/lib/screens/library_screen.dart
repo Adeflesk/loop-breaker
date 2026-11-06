@@ -97,10 +97,68 @@ class LibraryScreen extends StatelessWidget {
     );
   }
 
+  void _showRewireLoopExplainer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Rewire Your Loop — The 8-Node Cycle',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Behavioral loops follow a predictable 8-node progression:\n\n'
+                  '1. Stress → 2. Coping Struggle → 3. Procrastination → '
+                  '4. Neglecting Needs → 5. Hypervigilance → 6. Negative Beliefs → '
+                  '7. Low Self-Esteem → 8. Shame\n\n'
+                  'Catching the cycle at Nodes 1–3 with a physiological reset or '
+                  '5-minute action prevents escalation into Shame and rewires your '
+                  'default neural pathway.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[800],
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Got it'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Rewire Library')),
+      appBar: AppBar(
+        title: const Text('Rewire Library'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _showRewireLoopExplainer(context),
+            icon: const Icon(Icons.auto_graph_outlined, size: 18),
+            label: const Text('Rewire Your Loop'),
+          ),
+        ],
+      ),
       body: ListView(
         children: _states.map((state) {
           return ExpansionTile(

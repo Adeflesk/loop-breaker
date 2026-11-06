@@ -353,9 +353,45 @@ Optional query param: `limit` (1–100, default 10). Requires `FEATURE_DAILY_PRA
 
 ---
 
+### `POST /profile`
+
+Requires `FEATURE_IDENTITY_LAYER=true` (enabled by default). Saves the user's core values and `"I am someone who..."` identity statement.
+
+**Request body**
+
+```json
+{
+  "values": ["Presence", "Courage"],
+  "identity_statement": "I am someone who pauses and responds with intention."
+}
+```
+
+**Response body (`200 OK`)**
+
+```json
+{ "status": "saved" }
+```
+
+---
+
+### `GET /profile`
+
+Requires `FEATURE_IDENTITY_LAYER=true` (enabled by default).
+
+**Response body**
+
+```json
+{
+  "values": ["Presence", "Courage"],
+  "identity_statement": "I am someone who pauses and responds with intention."
+}
+```
+
+---
+
 ### `DELETE /reset`
 
-Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`, `PracticeSession`) from Neo4j while preserving core `Node` labels.
+Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`, `PracticeSession`, `UserProfile`) from Neo4j while preserving core `Node` labels.
 
 **Required header**
 

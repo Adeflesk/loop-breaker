@@ -61,4 +61,18 @@ void main() {
 
     expect(find.text('Rewire Library'), findsOneWidget);
   });
+
+  testWidgets('tapping Rewire Your Loop opens 8-node cycle explainer',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+
+    expect(find.text('Rewire Your Loop'), findsOneWidget);
+    await tester.tap(find.text('Rewire Your Loop'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Rewire Your Loop — The 8-Node Cycle'),
+      findsOneWidget,
+    );
+  });
 }

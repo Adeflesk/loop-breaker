@@ -426,5 +426,39 @@ class ApiClient {
       'recent_sessions': [],
     };
   }
+
+  static Future<void> saveUserProfile(Map<String, dynamic> data) async {
+    return _withRetry(() async {
+      final response = await _httpClient.post(
+        _uri('/profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Profile save failed with status ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<Map<String, dynamic>> getUserProfile() async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(_uri('/profile'));
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Profile fetch failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Profile fetch error: $e');
+    }
+    return {
+      'values': <String>[],
+      'identity_statement': '',
+    };
+  }
 }
 

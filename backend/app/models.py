@@ -128,6 +128,20 @@ class InsightResponse(BaseModel):
     weekly_activity: Optional[List[bool]] = None  # 7 booleans, Mon–Sun
     practice_streak: Optional[int] = None
     days_practiced_this_week: Optional[int] = None
+    values_nudge: Optional[str] = None
+    identity_statement: Optional[str] = None
+
+
+class UserProfileRequest(BaseModel):
+    """User's core values and identity statement."""
+    values: List[str] = Field(default_factory=list, max_length=10)
+    identity_statement: str = Field("", max_length=500)
+
+
+class UserProfileResponse(BaseModel):
+    """Saved user profile with core values and identity statement."""
+    values: List[str] = Field(default_factory=list)
+    identity_statement: str = ""
 
 
 class PracticeSessionRequest(BaseModel):

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_client.dart';
 import '../widgets/breathing_circle.dart';
+import '../widgets/identity_profile_sheet.dart';
 
 class DailyPracticeScreen extends StatefulWidget {
   const DailyPracticeScreen({super.key});
@@ -21,6 +22,8 @@ class _DailyPracticeScreenState extends State<DailyPracticeScreen> {
   int _breathingSeconds = 60;
   bool _isSubmitting = false;
   String? _reminderTime;
+  List<String> _userValues = [];
+  String _identityStatement = '';
 
   final List<String> _stepTitles = [
     'Physiological Reset',
@@ -53,6 +56,8 @@ class _DailyPracticeScreenState extends State<DailyPracticeScreen> {
     if (!mounted) return;
     setState(() {
       _reminderTime = prefs.getString(_reminderPrefKey);
+      _userValues = prefs.getStringList('user_values') ?? [];
+      _identityStatement = prefs.getString('identity_statement') ?? '';
     });
   }
 
@@ -211,6 +216,74 @@ class _DailyPracticeScreenState extends State<DailyPracticeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF5B9B96).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF5B9B96).withValues(alpha: 0.25),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Identity Anchor',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF5B9B96),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final updated = await IdentityProfileSheet.show(
+                        context,
+                        initialValues: _userValues,
+                        initialStatement: _identityStatement,
+                      );
+                      if (updated != null && mounted) {
+                        setState(() {
+                          _userValues =
+                              List<String>.from(updated['values'] as List? ?? []);
+                          _identityStatement =
+                              updated['identity_statement'] as String? ?? '';
+                        });
+                      }
+                    },
+                    child: const Text(
+                      'Edit Identity',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                _identityStatement.isNotEmpty
+                    ? _identityStatement
+                    : 'I am someone who pauses and responds with intention.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (_userValues.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Core Values: ${_userValues.join(" • ")}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                ),
+              ],
+            ],
+          ),
+        ),
         const Text(
           'What is one intentional response you want to practice today before a loop starts?',
           style: TextStyle(
