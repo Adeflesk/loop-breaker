@@ -194,4 +194,41 @@ void main() {
       expect(receivedHeader, 'CONFIRM');
     });
   });
+
+  group('ApiClient.createPracticeSession and getPracticeStats', () {
+    test('createPracticeSession posts payload and succeeds on 201', () async {
+      Map<String, dynamic>? posted;
+      ApiClient.clientOverride = MockClient((request) async {
+        expect(request.url.path, endsWith('/practice'));
+        posted = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode({'status': 'recorded'}), 201);
+      });
+
+      await ApiClient.createPracticeSession({
+        'intention': 'Pause first',
+        'gratitude': 'Coffee',
+        'breathing_seconds': 60,
+      });
+      expect(posted?['intention'], 'Pause first');
+    });
+
+    test('getPracticeStats returns parsed stats on 200', () async {
+      ApiClient.clientOverride = MockClient((request) async {
+        expect(request.url.path, endsWith('/practice-stats'));
+        return http.Response(
+          jsonEncode({
+            'practice_streak': 4,
+            'days_practiced_this_week': 5,
+            'total_sessions': 12,
+            'recent_sessions': [],
+          }),
+          200,
+        );
+      });
+
+      final stats = await ApiClient.getPracticeStats();
+      expect(stats['practice_streak'], 4);
+      expect(stats['days_practiced_this_week'], 5);
+    });
+  });
 }

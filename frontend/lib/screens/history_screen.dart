@@ -142,8 +142,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       snapshot.data!['weekly_activity'] as List? ?? [];
                   final streak =
                       (snapshot.data!['streak'] as num?)?.toInt() ?? 0;
+                  final daysPracticed =
+                      (snapshot.data!['days_practiced_this_week'] as num?)?.toInt() ?? 0;
                   if (weeklyActivity.isEmpty) return const SizedBox.shrink();
-                  return _buildWeeklyScorecard(weeklyActivity, streak);
+                  return _buildWeeklyScorecard(
+                    weeklyActivity,
+                    streak,
+                    daysPracticedThisWeek: daysPracticed,
+                  );
                 },
               ),
               // Weekly Comparison
@@ -453,7 +459,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildWeeklyScorecard(List<dynamic> weeklyActivity, int streak) {
+  Widget _buildWeeklyScorecard(
+    List<dynamic> weeklyActivity,
+    int streak, {
+    int daysPracticedThisWeek = 0,
+  }) {
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     final todayIndex = DateTime.now().weekday - 1; // 0=Mon, 6=Sun
     final activeDays = weeklyActivity.where((v) => v == true).length;
@@ -547,6 +557,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Text(
               '$activeDays/7 days active  •  🔥 $streak-day streak',
               style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Days practiced this week: $daysPracticedThisWeek/7',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5B9B96),
+              ),
             ),
           ],
         ),

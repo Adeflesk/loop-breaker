@@ -33,6 +33,8 @@ from .models import (
     JournalEntryResponse,
     JournalOutcomeRequest,
     PersonalLoopContext,
+    PracticeSessionRequest,
+    PracticeStatsResponse,
     ThoughtRecordRequest,
     ThoughtRecordResponse,
 )
@@ -89,6 +91,9 @@ FEATURE_PROGRESSIVE_EDUCATION = os.getenv("FEATURE_PROGRESSIVE_EDUCATION", "true
 FEATURE_LOOP_PATH = os.getenv("FEATURE_LOOP_PATH", "true").lower() == "true"
 FEATURE_WEEKLY_TRACKING = os.getenv("FEATURE_WEEKLY_TRACKING", "true").lower() == "true"
 FEATURE_DAILY_CHECK = os.getenv("FEATURE_DAILY_CHECK", "true").lower() == "true"
+
+# Phase 7 Feature Flags
+FEATURE_DAILY_PRACTICE = os.getenv("FEATURE_DAILY_PRACTICE", "true").lower() == "true"
 
 app = FastAPI(title="LoopBreaker AI Analysis Engine", lifespan=lifespan)
 
@@ -520,6 +525,11 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         raise HTTPException(status_code=503, detail="Insight service temporarily unavailable")
 
     weekly_activity = db.get_weekly_activity()
+    practice_stats = (
+        db.get_practice_stats()
+        if hasattr(db, "get_practice_stats")
+        else {"practice_streak": 0, "days_practiced_this_week": 0}
+    )
 
     if not stats:
         return {
@@ -531,6 +541,8 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
             "missing_need": None,
             "trigger_count": 0,
             "weekly_activity": weekly_activity,
+            "practice_streak": int(practice_stats.get("practice_streak", 0)),
+            "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
         }
 
     loop_count = stats.get("count", 0)
@@ -546,6 +558,8 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         "missing_need": stats.get("missing_need"),
         "trigger_count": int(stats.get("trigger_count", 0)),
         "weekly_activity": weekly_activity,
+        "practice_streak": int(practice_stats.get("practice_streak", 0)),
+        "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
     }
 
 @app.get("/loop-path")
@@ -766,6 +780,47 @@ async def get_thought_records(
     except Exception:
         logger.error("Thought records retrieval failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Thought records service temporarily unavailable")
+
+
+@app.post("/practice", status_code=201)
+async def create_practice_session(
+    body: PracticeSessionRequest,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_DAILY_PRACTICE:
+        raise HTTPException(status_code=404, detail="Daily practice feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        success = db.create_practice_session(
+            intention=body.intention,
+            gratitude=body.gratitude,
+            breathing_seconds=body.breathing_seconds,
+        )
+        if success:
+            return {"status": "recorded"}
+        raise HTTPException(status_code=503, detail="Practice session recording failed")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Practice session creation failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Practice service unavailable")
+
+
+@app.get("/practice-stats", response_model=PracticeStatsResponse)
+async def get_practice_stats(
+    limit: int = Query(10, ge=1, le=100),
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    if not FEATURE_DAILY_PRACTICE:
+        raise HTTPException(status_code=404, detail="Daily practice feature not enabled")
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_practice_stats(limit=limit)
+    except Exception:
+        logger.error("Practice stats retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Practice stats service unavailable")
 
 
 if __name__ == "__main__":

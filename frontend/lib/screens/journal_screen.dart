@@ -6,6 +6,7 @@ import '../widgets/breathing_circle.dart';
 import '../widgets/crisis_safety_dialog.dart';
 import '../widgets/personalization_cards.dart';
 import '../widgets/streak_bar.dart';
+import 'daily_practice_screen.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -646,6 +647,25 @@ class _JournalScreenState extends State<JournalScreen> {
       appBar: AppBar(
         title: const Text('LoopBreaker'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.self_improvement_outlined),
+            tooltip: 'Daily Practice',
+            onPressed: () async {
+              final completed = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DailyPracticeScreen(),
+                ),
+              );
+              if (completed == true && mounted) {
+                setState(() {
+                  _insightFuture = ApiClient.fetchInsight();
+                });
+              }
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showDailyCheckIn,
@@ -689,6 +709,8 @@ class _JournalScreenState extends State<JournalScreen> {
                       snapshot.data?['success_rate']?.toDouble();
                   final String? trend = snapshot.data?['trend'];
                   final int? streak = snapshot.data?['streak'];
+                  final int? practiceStreak =
+                      (snapshot.data?['practice_streak'] as num?)?.toInt();
                   final String? missingNeed = snapshot.data?['missing_need'];
 
                   return Card(
@@ -783,6 +805,23 @@ class _JournalScreenState extends State<JournalScreen> {
                                 const SizedBox(width: 6),
                                 Text(
                                   'Streak: $streak day${streak > 1 ? "s" : ""}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (practiceStreak != null && practiceStreak > 0) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.self_improvement,
+                                    color: Color(0xFF5B9B96), size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Practice Streak: $practiceStreak day${practiceStreak > 1 ? "s" : ""}',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
