@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
+import 'daily_practice_screen.dart';
 import 'thought_record_screen.dart';
 
 class ThoughtRecordsTab extends StatefulWidget {
@@ -31,6 +32,20 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
       appBar: AppBar(
         title: const Text('Thought Records'),
         elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DailyPracticeScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.self_improvement_outlined, size: 18),
+            label: const Text('Daily Practice'),
+          ),
+        ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _recordsFuture,

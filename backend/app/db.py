@@ -663,6 +663,7 @@ class BehavioralStateManager:
                 session.run(
                     "MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome "
                     "OR n:JournalEntry OR n:ThoughtRecord OR n:DailyCheck "
+                    "OR n:PracticeSession OR n:UserProfile "
                     "DETACH DELETE n"
                 )
             self.is_available = True
@@ -1052,6 +1053,173 @@ class BehavioralStateManager:
         except Exception:
             logger.error("DB record journal outcome error", exc_info=True)
             return False
+
+    def create_practice_session(
+        self,
+        intention: str,
+        gratitude: str,
+        breathing_seconds: int = 60,
+    ) -> bool:
+        """Records a completed daily proactive practice session."""
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    CREATE (p:PracticeSession {
+                        timestamp: datetime(),
+                        intention: $intention,
+                        gratitude: $gratitude,
+                        breathing_seconds: $breathing_seconds
+                    })
+                    """,
+                    intention=intention,
+                    gratitude=gratitude,
+                    breathing_seconds=breathing_seconds,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB practice session creation error", exc_info=True)
+            return False
+
+    def get_practice_stats(self, limit: int = 10) -> Dict[str, Any]:
+        """Returns practice streak, days practiced this week, total sessions, and recent sessions."""
+        default_stats: Dict[str, Any] = {
+            "practice_streak": 0,
+            "days_practiced_this_week": 0,
+            "total_sessions": 0,
+            "recent_sessions": [],
+        }
+        if not self.is_available:
+            return default_stats
+
+        from datetime import date, timedelta
+
+        try:
+            today = date.today()
+            days_back = today.weekday()  # 0=Mon, 6=Sun
+            monday = today - timedelta(days=days_back)
+
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (p:PracticeSession)
+                    RETURN
+                        toString(p.timestamp) AS timestamp,
+                        toString(date(p.timestamp)) AS practice_date,
+                        p.intention AS intention,
+                        p.gratitude AS gratitude,
+                        p.breathing_seconds AS breathing_seconds
+                    ORDER BY p.timestamp DESC
+                    """
+                )
+
+                all_dates: set[str] = set()
+                recent_sessions: List[Dict[str, Any]] = []
+                total_sessions = 0
+
+                for record in result:
+                    total_sessions += 1
+                    p_date = record.get("practice_date")
+                    if p_date:
+                        all_dates.add(str(p_date)[:10])
+                    if len(recent_sessions) < limit:
+                        recent_sessions.append({
+                            "timestamp": str(record.get("timestamp") or ""),
+                            "intention": record.get("intention") or "",
+                            "gratitude": record.get("gratitude") or "",
+                            "breathing_seconds": int(record.get("breathing_seconds") or 60),
+                        })
+
+            days_this_week = sum(
+                1
+                for i in range(7)
+                if (monday + timedelta(days=i)).isoformat() in all_dates
+            )
+
+            # Calculate consecutive day streak ending today or yesterday
+            streak = 0
+            cursor = today
+            if cursor.isoformat() not in all_dates:
+                yesterday = today - timedelta(days=1)
+                if yesterday.isoformat() in all_dates:
+                    cursor = yesterday
+                else:
+                    cursor = None  # type: ignore[assignment]
+
+            while cursor is not None and cursor.isoformat() in all_dates:
+                streak += 1
+                cursor = cursor - timedelta(days=1)
+
+            self.is_available = True
+            return {
+                "practice_streak": streak,
+                "days_practiced_this_week": days_this_week,
+                "total_sessions": total_sessions,
+                "recent_sessions": recent_sessions,
+            }
+        except Exception:
+            logger.error("DB get_practice_stats error", exc_info=True)
+            return default_stats
+
+    def save_user_profile(
+        self,
+        values: List[str],
+        identity_statement: str,
+    ) -> bool:
+        """Persists the user's core values and identity statement."""
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    MERGE (u:UserProfile {id: 'default'})
+                    SET u.values = $values,
+                        u.identity_statement = $identity_statement,
+                        u.updated_at = datetime()
+                    """,
+                    values=values,
+                    identity_statement=identity_statement,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB save_user_profile error", exc_info=True)
+            return False
+
+    def get_user_profile(self) -> Dict[str, Any]:
+        """Returns the user's saved core values and identity statement."""
+        default_profile: Dict[str, Any] = {
+            "values": [],
+            "identity_statement": "",
+        }
+        if not self.is_available:
+            return default_profile
+        try:
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (u:UserProfile {id: 'default'})
+                    RETURN u.values AS values, u.identity_statement AS identity_statement
+                    LIMIT 1
+                    """
+                )
+                record = result.single()
+                self.is_available = True
+                if not record:
+                    return default_profile
+                return {
+                    "values": list(record.get("values") or []),
+                    "identity_statement": str(record.get("identity_statement") or ""),
+                }
+        except Exception:
+            logger.error("DB get_user_profile error", exc_info=True)
+            return default_profile
 
 def create_db_manager() -> BehavioralStateManager:
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")

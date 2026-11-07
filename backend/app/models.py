@@ -126,6 +126,37 @@ class InsightResponse(BaseModel):
     missing_need: Optional[str] = None
     trigger_count: Optional[int] = None
     weekly_activity: Optional[List[bool]] = None  # 7 booleans, Mon–Sun
+    practice_streak: Optional[int] = None
+    days_practiced_this_week: Optional[int] = None
+    values_nudge: Optional[str] = None
+    identity_statement: Optional[str] = None
+
+
+class UserProfileRequest(BaseModel):
+    """User's core values and identity statement."""
+    values: List[str] = Field(default_factory=list, max_length=10)
+    identity_statement: str = Field("", max_length=500)
+
+
+class UserProfileResponse(BaseModel):
+    """Saved user profile with core values and identity statement."""
+    values: List[str] = Field(default_factory=list)
+    identity_statement: str = ""
+
+
+class PracticeSessionRequest(BaseModel):
+    """Daily proactive practice routine completion."""
+    intention: str = Field(..., min_length=1, max_length=1000)
+    gratitude: str = Field(..., min_length=1, max_length=1000)
+    breathing_seconds: int = Field(60, ge=0, le=1800)
+
+
+class PracticeStatsResponse(BaseModel):
+    """Summary of proactive daily practice sessions."""
+    practice_streak: int
+    days_practiced_this_week: int
+    total_sessions: int
+    recent_sessions: List[Dict[str, Any]] = []
 
 
 class JournalEntryResponse(BaseModel):

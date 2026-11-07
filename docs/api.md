@@ -307,9 +307,91 @@ Optional query param: `days` (7–365, default 30). Requires `FEATURE_DAILY_CHEC
 
 ---
 
+### `POST /practice`
+
+Requires `FEATURE_DAILY_PRACTICE=true` (enabled by default). Records a completed 3-minute proactive daily practice session.
+
+**Request body**
+
+```json
+{
+  "intention": "Pause and take one sigh before reacting",
+  "gratitude": "Morning coffee and quiet focus",
+  "breathing_seconds": 60
+}
+```
+
+**Response body (`201 Created`)**
+
+```json
+{ "status": "recorded" }
+```
+
+---
+
+### `GET /practice-stats`
+
+Optional query param: `limit` (1–100, default 10). Requires `FEATURE_DAILY_PRACTICE=true` (enabled by default).
+
+**Response body**
+
+```json
+{
+  "practice_streak": 3,
+  "days_practiced_this_week": 4,
+  "total_sessions": 9,
+  "recent_sessions": [
+    {
+      "timestamp": "2026-11-02T08:00:00Z",
+      "intention": "Pause and take one sigh before reacting",
+      "gratitude": "Morning coffee and quiet focus",
+      "breathing_seconds": 60
+    }
+  ]
+}
+```
+
+---
+
+### `POST /profile`
+
+Requires `FEATURE_IDENTITY_LAYER=true` (enabled by default). Saves the user's core values and `"I am someone who..."` identity statement.
+
+**Request body**
+
+```json
+{
+  "values": ["Presence", "Courage"],
+  "identity_statement": "I am someone who pauses and responds with intention."
+}
+```
+
+**Response body (`200 OK`)**
+
+```json
+{ "status": "saved" }
+```
+
+---
+
+### `GET /profile`
+
+Requires `FEATURE_IDENTITY_LAYER=true` (enabled by default).
+
+**Response body**
+
+```json
+{
+  "values": ["Presence", "Courage"],
+  "identity_statement": "I am someone who pauses and responds with intention."
+}
+```
+
+---
+
 ### `DELETE /reset`
 
-Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`) from Neo4j while preserving core `Node` labels.
+Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`, `PracticeSession`, `UserProfile`) from Neo4j while preserving core `Node` labels.
 
 **Required header**
 

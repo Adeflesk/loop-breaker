@@ -388,5 +388,77 @@ class ApiClient {
     }
     return {};
   }
+
+  static Future<void> createPracticeSession(Map<String, dynamic> data) async {
+    return _withRetry(() async {
+      final response = await _httpClient.post(
+        _uri('/practice'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Practice session failed with status ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<Map<String, dynamic>> getPracticeStats({int limit = 10}) async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(
+            _uri('/practice-stats?limit=$limit'),
+          );
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Practice stats failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Practice stats fetch error: $e');
+    }
+    return {
+      'practice_streak': 0,
+      'days_practiced_this_week': 0,
+      'total_sessions': 0,
+      'recent_sessions': [],
+    };
+  }
+
+  static Future<void> saveUserProfile(Map<String, dynamic> data) async {
+    return _withRetry(() async {
+      final response = await _httpClient.post(
+        _uri('/profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Profile save failed with status ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<Map<String, dynamic>> getUserProfile() async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(_uri('/profile'));
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Profile fetch failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Profile fetch error: $e');
+    }
+    return {
+      'values': <String>[],
+      'identity_statement': '',
+    };
+  }
 }
 
