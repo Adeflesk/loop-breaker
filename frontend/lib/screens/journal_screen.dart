@@ -9,6 +9,7 @@ import '../widgets/identity_profile_sheet.dart';
 import '../widgets/personalization_cards.dart';
 import '../widgets/streak_bar.dart';
 import 'daily_practice_screen.dart';
+import 'environment_screen.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -747,6 +748,13 @@ class _JournalScreenState extends State<JournalScreen> {
                       (snapshot.data?['practice_streak'] as num?)?.toInt();
                   final String? missingNeed = snapshot.data?['missing_need'];
                   final String? valuesNudge = snapshot.data?['values_nudge'];
+                  final String? peakTimeWindow =
+                      snapshot.data?['peak_time_window'];
+                  final String? preLoopSignal =
+                      snapshot.data?['pre_loop_signal'];
+                  final bool envAuditPrompt =
+                      snapshot.data?['environment_audit_prompt'] == true;
+                  final String? topLoop = snapshot.data?['top_loop'];
 
                   return Card(
                     elevation: 0,
@@ -905,6 +913,70 @@ class _JournalScreenState extends State<JournalScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ],
+                          if (peakTimeWindow != null &&
+                              peakTimeWindow.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.schedule_outlined,
+                                    color: Colors.deepPurple, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Peak Loop Window: ${peakTimeWindow.replaceAll("_", " ")}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (preLoopSignal != null &&
+                              preLoopSignal.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.radar_outlined,
+                                    color: Colors.deepOrange, size: 16),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Early Pre-Loop Signal: $preLoopSignal',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (envAuditPrompt) ...[
+                            const SizedBox(height: 10),
+                            ActionChip(
+                              avatar: const Icon(
+                                Icons.tune,
+                                size: 16,
+                                color: Color(0xFF5B9B96),
+                              ),
+                              label: const Text(
+                                'Audit Environment Friction',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EnvironmentScreen(
+                                      initialLoop: topLoop != 'None'
+                                          ? topLoop
+                                          : 'Procrastination',
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                           if (successRate != null) ...[

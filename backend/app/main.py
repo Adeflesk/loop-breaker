@@ -16,7 +16,7 @@ except ImportError:
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .ai import query_local_ai
+from .ai import generate_weekly_narrative, query_local_ai
 from .crisis import CrisisSafetyService
 from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
@@ -27,6 +27,8 @@ from .models import (
     CrisisHotline,
     CrisisResourcesResponse,
     DailyCheckRequest,
+    EnvironmentAuditRequest,
+    EnvironmentAuditResponse,
     FeedbackRequest,
     InsightResponse,
     InterventionStats,
@@ -39,6 +41,7 @@ from .models import (
     ThoughtRecordResponse,
     UserProfileRequest,
     UserProfileResponse,
+    WeeklyNarrativeResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -483,6 +486,27 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         logger.error("Journal entry save failed", exc_info=True, extra={"request_id": request_id})
         # Non-critical; do not propagate
 
+    # 7b. Compute Phase 8 early warning & environmental audit prompt
+    early_warning_message = None
+    environment_audit_prompt = False
+    try:
+        advanced_patterns = (
+            db.get_advanced_patterns()
+            if hasattr(db, "get_advanced_patterns")
+            else {}
+        )
+        if (
+            not is_loop
+            and advanced_patterns.get("pre_loop_signal")
+            and advanced_patterns["pre_loop_signal"] == node
+        ):
+            early_warning_message = (
+                f"Early Signal: {node} often precedes a high-risk loop for you. "
+                "Interrupting here prevents escalation."
+            )
+    except Exception:
+        pass
+
     # 8. Return the full payload to Flutter
     response_data = {
         "detected_node": node,
@@ -507,6 +531,8 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         "journal_entry_id": entry_id,
         "personal_loop": personal_loop,
         "intervention_effectiveness": intervention_effectiveness,
+        "early_warning_message": early_warning_message,
+        "environment_audit_prompt": environment_audit_prompt,
     }
 
     # After return, increment seen_count (non-blocking)
@@ -540,6 +566,11 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
     )
     user_values = profile.get("values") or []
     identity_statement = profile.get("identity_statement") or None
+    advanced_patterns = (
+        db.get_advanced_patterns()
+        if hasattr(db, "get_advanced_patterns")
+        else {"peak_time_window": None, "pre_loop_signal": None}
+    )
 
     if not stats:
         return {
@@ -555,6 +586,9 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
             "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
             "values_nudge": None,
             "identity_statement": identity_statement,
+            "peak_time_window": advanced_patterns.get("peak_time_window"),
+            "pre_loop_signal": advanced_patterns.get("pre_loop_signal"),
+            "environment_audit_prompt": False,
         }
 
     loop_count = stats.get("count", 0)
@@ -580,6 +614,9 @@ async def get_insight(request: Request, db: BehavioralStateManager = Depends(get
         "days_practiced_this_week": int(practice_stats.get("days_practiced_this_week", 0)),
         "values_nudge": values_nudge,
         "identity_statement": identity_statement,
+        "peak_time_window": advanced_patterns.get("peak_time_window"),
+        "pre_loop_signal": advanced_patterns.get("pre_loop_signal"),
+        "environment_audit_prompt": bool(loop_count >= 5),
     }
 
 @app.get("/loop-path")
@@ -880,6 +917,111 @@ async def get_profile(
     except Exception:
         logger.error("Profile retrieval failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Profile service unavailable")
+
+
+@app.post("/environment-audit")
+async def save_environment_audit(
+    body: EnvironmentAuditRequest,
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        success = db.save_environment_audit(
+            target_loop=body.target_loop,
+            checked_items=body.checked_items,
+            custom_friction_step=body.custom_friction_step,
+        )
+        if success:
+            return {"status": "saved"}
+        raise HTTPException(status_code=503, detail="Environment audit save failed")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Environment audit save failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Environment audit service unavailable")
+
+
+@app.get("/environment-audit", response_model=EnvironmentAuditResponse)
+async def get_environment_audit(
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return db.get_environment_audit()
+    except Exception:
+        logger.error("Environment audit retrieval failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Environment audit service unavailable")
+
+
+@app.get("/weekly-narrative", response_model=WeeklyNarrativeResponse)
+async def get_weekly_narrative(
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        stats = db.get_ai_insight() or {}
+        practice_stats = (
+            db.get_practice_stats()
+            if hasattr(db, "get_practice_stats")
+            else {"practice_streak": 0}
+        )
+        advanced = (
+            db.get_advanced_patterns()
+            if hasattr(db, "get_advanced_patterns")
+            else {"peak_time_window": None, "pre_loop_signal": None}
+        )
+        summary = {
+            "top_loop": stats.get("top_loop", "None"),
+            "success_rate": stats.get("success_rate", 0),
+            "practice_streak": practice_stats.get("practice_streak", 0),
+            "peak_time_window": advanced.get("peak_time_window"),
+            "pre_loop_signal": advanced.get("pre_loop_signal"),
+        }
+        narrative = generate_weekly_narrative(summary)
+        return {
+            "narrative": narrative,
+            "peak_time_window": advanced.get("peak_time_window"),
+            "pre_loop_signal": advanced.get("pre_loop_signal"),
+        }
+    except Exception:
+        logger.error("Weekly narrative generation failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Weekly narrative service unavailable")
+
+
+@app.get("/export")
+async def export_journey(
+    request: Request = None,
+    db: BehavioralStateManager = Depends(get_db),
+):
+    request_id = getattr(request.state, "request_id", "") if request else ""
+    try:
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "insight": db.get_ai_insight() or {},
+            "history": db.get_history(limit=500),
+            "thought_records": db.get_thought_records(limit=100),
+            "practice_stats": (
+                db.get_practice_stats(limit=50)
+                if hasattr(db, "get_practice_stats")
+                else {}
+            ),
+            "profile": (
+                db.get_user_profile()
+                if hasattr(db, "get_user_profile")
+                else {}
+            ),
+            "environment_audit": (
+                db.get_environment_audit()
+                if hasattr(db, "get_environment_audit")
+                else {}
+            ),
+        }
+    except Exception:
+        logger.error("Export failed", exc_info=True, extra={"request_id": request_id})
+        raise HTTPException(status_code=503, detail="Export service unavailable")
 
 
 if __name__ == "__main__":

@@ -178,3 +178,35 @@ async def query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
         "confidence": 0.5,
         "reasoning": "AI service unavailable.",
     }
+
+
+def generate_weekly_narrative(summary: Dict[str, Any]) -> str:
+    """Builds a concise Rewire-grounded weekly coaching narrative from aggregated pattern stats."""
+    top_loop = summary.get("top_loop") or "None"
+    if top_loop == "None":
+        return (
+            "Your journey is just beginning. Log a few entries or complete a 3-minute "
+            "daily practice to unlock personalized pattern narratives."
+        )
+
+    success_rate = round(float(summary.get("success_rate") or 0))
+    practice_streak = int(summary.get("practice_streak") or 0)
+    peak_window = summary.get("peak_time_window")
+    pre_signal = summary.get("pre_loop_signal")
+
+    parts = [
+        f"This week, your primary pattern was {top_loop} with a {success_rate}% disruption success rate."
+    ]
+    if peak_window:
+        parts.append(
+            f"Your loops cluster most often during the {peak_window.replace('_', ' ')} window."
+        )
+    if pre_signal:
+        parts.append(
+            f"Watch for {pre_signal} as an early warning signal before a full loop forms."
+        )
+    if practice_streak > 0:
+        parts.append(
+            f"Your {practice_streak}-day proactive practice streak is actively raising your baseline regulation threshold."
+        )
+    return " ".join(parts)

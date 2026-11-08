@@ -460,5 +460,76 @@ class ApiClient {
       'identity_statement': '',
     };
   }
+
+  static Future<void> saveEnvironmentAudit(Map<String, dynamic> data) async {
+    return _withRetry(() async {
+      final response = await _httpClient.post(
+        _uri('/environment-audit'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Environment audit save failed with status ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<Map<String, dynamic>> getEnvironmentAudit() async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(_uri('/environment-audit'));
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Environment audit fetch failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Environment audit fetch error: $e');
+    }
+    return {
+      'target_loop': '',
+      'checked_items': <String>[],
+      'custom_friction_step': '',
+    };
+  }
+
+  static Future<Map<String, dynamic>> getWeeklyNarrative() async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(_uri('/weekly-narrative'));
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Weekly narrative failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _defaultQuickTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Weekly narrative fetch error: $e');
+    }
+    return {};
+  }
+
+  static Future<Map<String, dynamic>> exportJourney() async {
+    try {
+      return await _withRetry(
+        () async {
+          final response = await _httpClient.get(_uri('/export'));
+          if (response.statusCode == 200) {
+            return jsonDecode(response.body) as Map<String, dynamic>;
+          }
+          throw Exception('Export failed with status ${response.statusCode}');
+        },
+        timeoutSeconds: _historyTimeoutSeconds,
+      );
+    } catch (e) {
+      debugPrint('Export fetch error: $e');
+    }
+    return {};
+  }
 }
 
