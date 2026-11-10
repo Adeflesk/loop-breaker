@@ -239,3 +239,4 @@ class TestDBPhase8Methods:
         patterns = mgr.get_advanced_patterns(days=30)
         assert patterns["peak_time_window"] == "afternoon"
         assert patterns["pre_loop_signal"] == "Stress"
+

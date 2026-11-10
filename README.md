@@ -122,6 +122,14 @@ Dual-layer crisis detection protects users in distress:
 - Frontend shows a crisis dialog before proceeding to the intervention
 - All crisis events are logged in Neo4j for clinical review
 
+🌱 Proactive Capacity, Identity & Pattern Intelligence (Phases 7–8)
+
+- **3-Minute Daily Practice (`/practice`, `/practice-stats`)** — Guided physiological sigh breathing, daily intention setting, and gratitude grounding with a separate practice streak and reminder time picker.
+- **Values & Identity Anchor (`/profile`)** — Curated core values picker and *"I am someone who…"* identity statement surfaced in insights and reinforced after breaking a loop.
+- **Environmental Friction Audit (`/environment-audit`)** — Checklist and custom rules to redesign environmental triggers when a loop repeats 5+ times.
+- **Advanced Pattern Intelligence (`/weekly-narrative`, `/insight`)** — Time-of-day loop clustering (`peak_time_window`), pre-loop precursor detection (`pre_loop_signal`), and weekly coaching narratives.
+- **Journey Export (`/export`)** — One-tap shareable progress summary and full JSON export from the Journey Dashboard.
+
 🔒 Privacy & Ethics
 Zero-Cloud AI: All sentiment analysis stays on-device via Ollama.
 
