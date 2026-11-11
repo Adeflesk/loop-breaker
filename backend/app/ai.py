@@ -12,6 +12,19 @@ logger = logging.getLogger(__name__)
 VALID_NODES = list(INTERVENTIONS.keys())
 DEFAULT_NODE = "Stress"
 DEFAULT_SUBLABEL = "unspecified"
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
+GEMINI_API_REVISION = "2026-05-20"
+GEMINI_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "node": {"type": "string"},
+        "sublabel": {"type": "string"},
+        "confidence": {"type": "number"},
+        "reasoning": {"type": "string"},
+    },
+    "required": ["node", "sublabel", "confidence", "reasoning"],
+}
 
 SYSTEM_PROMPT = """
 You are a Behavioral Science Specialist in LoopBreaker.
@@ -112,7 +125,109 @@ def clean_ai_response(raw_json: str) -> Dict[str, Any]:
         "reasoning": str(reasoning),
     }
 
+def _extract_gemini_text(raw_data: Dict[str, Any]) -> str:
+    """Extracts the text payload from a Gemini Interactions API response."""
+    output_text = raw_data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    steps = raw_data.get("steps")
+    if isinstance(steps, list):
+        for step in reversed(steps):
+            if isinstance(step, dict):
+                content = step.get("content")
+                if isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
+                            return str(part["text"])
+
+    outputs = raw_data.get("outputs")
+    if isinstance(outputs, list) and outputs:
+        last_output = outputs[-1]
+        if isinstance(last_output, dict) and last_output.get("text"):
+            return str(last_output["text"])
+
+    return ""
+
+
+async def _query_gemini(text: str, api_key: str, request_id: str = "") -> Dict[str, Any]:
+    """Queries the Gemini Interactions API with structured JSON output."""
+    model = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+    logger.info(
+        "AI request (Gemini)",
+        extra={"event": "ai_query", "provider": "gemini", "model": model, "text_length": len(text), "request_id": request_id},
+    )
+
+    payload = {
+        "model": model,
+        "system_instruction": SYSTEM_PROMPT,
+        "input": f'Journal entry: "{text}"\n\nJSON response:',
+        "store": False,
+        "response_format": {
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": GEMINI_RESPONSE_SCHEMA,
+        },
+    }
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+        "Api-Revision": GEMINI_API_REVISION,
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GEMINI_INTERACTIONS_URL,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+
+        response.raise_for_status()
+        raw_data = response.json()
+        ai_response = _extract_gemini_text(raw_data)
+
+        if not ai_response:
+            logger.warning(
+                "Gemini unexpected format",
+                extra={"event": "ai_response_format", "provider": "gemini", "raw_data": raw_data, "request_id": request_id},
+            )
+            return {
+                "detected_node": DEFAULT_NODE,
+                "emotion_sublabel": DEFAULT_SUBLABEL,
+                "confidence": 0.5,
+                "reasoning": "AI is warming up or busy. Please try again.",
+            }
+
+        logger.info(
+            "Gemini raw response",
+            extra={"event": "ai_response", "provider": "gemini", "snippet": ai_response[:300], "request_id": request_id},
+        )
+        return clean_ai_response(ai_response)
+
+    except httpx.HTTPStatusError as exc:
+        logger.error(
+            "Gemini service returned non-200 status",
+            exc_info=True,
+            extra={"event": "ai_http_status_error", "provider": "gemini", "status_code": exc.response.status_code, "request_id": request_id},
+        )
+    except Exception:
+        logger.error("Gemini AI client error", exc_info=True, extra={"event": "ai_generic_error", "provider": "gemini", "request_id": request_id})
+
+    return {
+        "detected_node": DEFAULT_NODE,
+        "emotion_sublabel": DEFAULT_SUBLABEL,
+        "confidence": 0.5,
+        "reasoning": "AI service unavailable.",
+    }
+
+
 async def query_local_ai(text: str, request_id: str = "") -> Dict[str, Any]:
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_api_key:
+        return await _query_gemini(text, gemini_api_key, request_id=request_id)
+
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
         f"Journal entry: \"{text}\"\n\n"

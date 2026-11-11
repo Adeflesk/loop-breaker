@@ -10,13 +10,19 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 
 try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:  # pragma: no cover
+    pass
+
+try:
     import sentry_sdk
 except ImportError:
     sentry_sdk = None
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .ai import generate_weekly_narrative, query_local_ai
+from .ai import DEFAULT_GEMINI_MODEL, generate_weekly_narrative, query_local_ai
 from .crisis import CrisisSafetyService
 from .db import BehavioralStateManager, create_db_manager
 from .interventions import INTERVENTIONS
@@ -57,19 +63,24 @@ async def lifespan(app: FastAPI):
     if sentry_dsn and sentry_sdk:
         sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1)
 
-    try:
-        url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{url}/api/tags")
-        models = [m["name"] for m in response.json().get("models", [])]
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        gemini_model = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+        logger.info("AI Ready: Gemini API configured (model '%s').", gemini_model)
+    else:
+        try:
+            url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{url}/api/tags")
+            models = [m["name"] for m in response.json().get("models", [])]
 
-        target = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
-        if any(target in m for m in models):
-            logger.info("AI Ready: Model '%s' is loaded.", target)
-        else:
-            logger.warning("AI: Model '%s' not found. Run 'ollama pull %s'", target, target)
-    except Exception:
-        logger.warning("AI: Ollama service not detected")
+            target = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+            if any(target in m for m in models):
+                logger.info("AI Ready: Model '%s' is loaded.", target)
+            else:
+                logger.warning("AI: Model '%s' not found. Run 'ollama pull %s'", target, target)
+        except Exception:
+            logger.warning("AI: Ollama service not detected")
 
     yield
 

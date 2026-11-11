@@ -5,11 +5,20 @@ import httpx
 import pytest
 
 from app.ai import (
+    DEFAULT_GEMINI_MODEL,
     DEFAULT_NODE,
     DEFAULT_SUBLABEL,
+    GEMINI_INTERACTIONS_URL,
+    _extract_gemini_text,
     clean_ai_response,
     query_local_ai,
 )
+
+
+@pytest.fixture(autouse=True)
+def clear_gemini_env(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
 
 
 def test_clean_ai_response_invalid_json():
@@ -262,3 +271,114 @@ def test_query_local_ai_uses_custom_ollama_url():
             assert custom_url in str(call_args)
 
     assert result["detected_node"] == "Anxiety"
+
+
+def test_extract_gemini_text_from_output_text():
+    raw = {"output_text": '{"node": "Stress", "sublabel": "Overload", "confidence": 0.9, "reasoning": "ok"}'}
+    assert "Stress" in _extract_gemini_text(raw)
+
+
+def test_extract_gemini_text_from_steps():
+    raw = {
+        "steps": [
+            {
+                "type": "model_output",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": '{"node": "Anxiety", "sublabel": "Dread", "confidence": 0.85, "reasoning": "step"}',
+                    }
+                ],
+            }
+        ]
+    }
+    assert "Anxiety" in _extract_gemini_text(raw)
+
+
+def test_extract_gemini_text_from_outputs():
+    raw = {
+        "outputs": [
+            {"text": '{"node": "Shame", "sublabel": "Guilt", "confidence": 0.8, "reasoning": "outputs"}'}
+        ]
+    }
+    assert "Shame" in _extract_gemini_text(raw)
+
+
+def test_extract_gemini_text_empty_fallback():
+    assert _extract_gemini_text({"status": "completed", "steps": [{"content": [{"type": "image"}]}]}) == ""
+
+
+def test_query_local_ai_uses_gemini_when_api_key_set(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+
+    fake_response = FakeResponse(
+        {
+            "output_text": '{"node": "Procrastination", "sublabel": "Avoidance", "confidence": 0.92, "reasoning": "gemini structured"}'
+        },
+        status_code=200,
+    )
+
+    with patch("app.ai.httpx.AsyncClient") as mock_client_class:
+        mock_client = FakeClient(fake_response)
+        mock_client_class.return_value = mock_client
+        mock_client.post = AsyncMock(return_value=fake_response)
+
+        result = asyncio.run(query_local_ai("I keep delaying my report"))
+
+        mock_client.post.assert_called_once()
+        args, kwargs = mock_client.post.call_args
+        assert args[0] == GEMINI_INTERACTIONS_URL
+        assert kwargs["headers"]["x-goog-api-key"] == "test-gemini-key"
+        assert kwargs["json"]["model"] == DEFAULT_GEMINI_MODEL
+        assert kwargs["json"]["response_format"]["mime_type"] == "application/json"
+
+    assert result["detected_node"] == "Procrastination"
+    assert result["emotion_sublabel"] == "Avoidance"
+    assert result["confidence"] == 0.92
+
+
+def test_query_local_ai_gemini_unexpected_format_fallback(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    fake_response = FakeResponse({"status": "completed"}, status_code=200)
+
+    with patch("app.ai.httpx.AsyncClient", return_value=FakeClient(fake_response)):
+        result = asyncio.run(query_local_ai("Empty gemini response"))
+
+    assert result["detected_node"] == DEFAULT_NODE
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
+    assert "warming up" in result["reasoning"]
+
+
+def test_query_local_ai_gemini_http_error_fallback(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    fake_response = FakeResponse({}, status_code=429)
+
+    with patch("app.ai.httpx.AsyncClient", return_value=FakeClient(fake_response)):
+        result = asyncio.run(query_local_ai("Rate limit test"))
+
+    assert result["detected_node"] == DEFAULT_NODE
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
+    assert "unavailable" in result["reasoning"]
+
+
+def test_query_local_ai_gemini_connect_error_fallback(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+
+    class ConnectErrorClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *args, **kwargs):
+            request = httpx.Request("POST", GEMINI_INTERACTIONS_URL)
+            raise httpx.ConnectError("Network unreachable", request=request)
+
+    with patch("app.ai.httpx.AsyncClient", return_value=ConnectErrorClient()):
+        result = asyncio.run(query_local_ai("Gemini network error"))
+
+    assert result["detected_node"] == DEFAULT_NODE
+    assert result["emotion_sublabel"] == DEFAULT_SUBLABEL
+    assert "unavailable" in result["reasoning"]
+
