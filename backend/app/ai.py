@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 VALID_NODES = list(INTERVENTIONS.keys())
 DEFAULT_NODE = "Stress"
 DEFAULT_SUBLABEL = "unspecified"
-DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 GEMINI_API_REVISION = "2026-05-20"
 GEMINI_RESPONSE_SCHEMA = {
@@ -163,6 +163,9 @@ async def _query_gemini(text: str, api_key: str, request_id: str = "") -> Dict[s
         "system_instruction": SYSTEM_PROMPT,
         "input": f'Journal entry: "{text}"\n\nJSON response:',
         "store": False,
+        "generation_config": {
+            "thinking_level": "low",
+        },
         "response_format": {
             "type": "text",
             "mime_type": "application/json",
