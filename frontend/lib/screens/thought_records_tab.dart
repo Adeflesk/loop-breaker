@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
 import 'daily_practice_screen.dart';
+import 'environment_screen.dart';
 import 'thought_record_screen.dart';
 
 class ThoughtRecordsTab extends StatefulWidget {
@@ -33,6 +34,18 @@ class _ThoughtRecordsTabState extends State<ThoughtRecordsTab> {
         title: const Text('Thought Records'),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.tune_outlined),
+            tooltip: 'Environment Audit',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const EnvironmentScreen(),
+                ),
+              );
+            },
+          ),
           TextButton.icon(
             onPressed: () {
               Navigator.push(

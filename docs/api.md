@@ -389,9 +389,49 @@ Requires `FEATURE_IDENTITY_LAYER=true` (enabled by default).
 
 ---
 
+### `POST /environment-audit`
+
+Saves the user's environmental friction checklist and custom rule for a target loop.
+
+**Request body**
+
+```json
+{
+  "target_loop": "Procrastination",
+  "checked_items": ["Put phone in another room during focus blocks"],
+  "custom_friction_step": "Charge phone in the kitchen after 9:30 PM"
+}
+```
+
+**Response body (`200 OK`)**
+
+```json
+{ "status": "saved" }
+```
+
+---
+
+### `GET /environment-audit`
+
+Returns the saved environmental design audit.
+
+---
+
+### `GET /weekly-narrative`
+
+Returns a concise Rewire-grounded coaching narrative summarizing the user's weekly pattern stats, time-of-day clustering (`peak_time_window`), and pre-loop precursor (`pre_loop_signal`).
+
+---
+
+### `GET /export`
+
+Returns a complete JSON export bundle (`generated_at`, `insight`, `history`, `thought_records`, `practice_stats`, `profile`, `environment_audit`).
+
+---
+
 ### `DELETE /reset`
 
-Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`, `PracticeSession`, `UserProfile`) from Neo4j while preserving core `Node` labels.
+Deletes all user journey nodes (`Entry`, `Intervention`, `Outcome`, `JournalEntry`, `ThoughtRecord`, `DailyCheck`, `PracticeSession`, `UserProfile`, `EnvironmentAudit`) from Neo4j while preserving core `Node` labels.
 
 **Required header**
 

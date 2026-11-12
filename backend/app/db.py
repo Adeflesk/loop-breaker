@@ -663,7 +663,7 @@ class BehavioralStateManager:
                 session.run(
                     "MATCH (n) WHERE n:Entry OR n:Intervention OR n:Outcome "
                     "OR n:JournalEntry OR n:ThoughtRecord OR n:DailyCheck "
-                    "OR n:PracticeSession OR n:UserProfile "
+                    "OR n:PracticeSession OR n:UserProfile OR n:EnvironmentAudit "
                     "DETACH DELETE n"
                 )
             self.is_available = True
@@ -1220,6 +1220,125 @@ class BehavioralStateManager:
         except Exception:
             logger.error("DB get_user_profile error", exc_info=True)
             return default_profile
+
+    def save_environment_audit(
+        self,
+        target_loop: str,
+        checked_items: List[str],
+        custom_friction_step: str = "",
+    ) -> bool:
+        """Persists the user's environmental design friction audit."""
+        if not self.is_available:
+            return False
+        try:
+            with self.driver.session() as session:
+                session.run(
+                    """
+                    MERGE (a:EnvironmentAudit {id: 'default'})
+                    SET a.target_loop = $target_loop,
+                        a.checked_items = $checked_items,
+                        a.custom_friction_step = $custom_friction_step,
+                        a.updated_at = datetime()
+                    """,
+                    target_loop=target_loop,
+                    checked_items=checked_items,
+                    custom_friction_step=custom_friction_step,
+                )
+            self.is_available = True
+            return True
+        except Exception:
+            self.is_available = False
+            logger.error("DB save_environment_audit error", exc_info=True)
+            return False
+
+    def get_environment_audit(self) -> Dict[str, Any]:
+        """Returns the saved environmental design audit."""
+        default_audit: Dict[str, Any] = {
+            "target_loop": "",
+            "checked_items": [],
+            "custom_friction_step": "",
+            "updated_at": None,
+        }
+        if not self.is_available:
+            return default_audit
+        try:
+            with self.driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (a:EnvironmentAudit {id: 'default'})
+                    RETURN a.target_loop AS target_loop,
+                           a.checked_items AS checked_items,
+                           a.custom_friction_step AS custom_friction_step,
+                           toString(a.updated_at) AS updated_at
+                    LIMIT 1
+                    """
+                )
+                record = result.single()
+                self.is_available = True
+                if not record:
+                    return default_audit
+                return {
+                    "target_loop": str(record.get("target_loop") or ""),
+                    "checked_items": list(record.get("checked_items") or []),
+                    "custom_friction_step": str(record.get("custom_friction_step") or ""),
+                    "updated_at": record.get("updated_at"),
+                }
+        except Exception:
+            logger.error("DB get_environment_audit error", exc_info=True)
+            return default_audit
+
+    def get_advanced_patterns(self, days: int = 30) -> Dict[str, Any]:
+        """Computes time-of-day clustering and pre-loop precursor signals."""
+        default_patterns: Dict[str, Any] = {
+            "peak_time_window": None,
+            "pre_loop_signal": None,
+        }
+        if not self.is_available:
+            return default_patterns
+
+        from datetime import datetime
+
+        path = self.get_loop_path(days=days)
+        if not path:
+            return default_patterns
+
+        buckets = {
+            "morning": 0,      # 05:00 - 11:59
+            "afternoon": 0,    # 12:00 - 16:59
+            "evening": 0,      # 17:00 - 21:59
+            "late_night": 0,   # 22:00 - 04:59
+        }
+        precursor_counts: Dict[str, int] = {}
+
+        for idx, entry in enumerate(path):
+            raw_ts = str(entry.get("timestamp") or "")
+            try:
+                dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                hour = dt.hour
+                if 5 <= hour < 12:
+                    buckets["morning"] += 1
+                elif 12 <= hour < 17:
+                    buckets["afternoon"] += 1
+                elif 17 <= hour < 22:
+                    buckets["evening"] += 1
+                else:
+                    buckets["late_night"] += 1
+            except ValueError:
+                pass
+
+            if idx > 0 and entry.get("has_intervention") is True:
+                prev_state = path[idx - 1].get("state")
+                if prev_state:
+                    precursor_counts[prev_state] = precursor_counts.get(prev_state, 0) + 1
+
+        active_buckets = {k: v for k, v in buckets.items() if v > 0}
+        peak_window = max(active_buckets, key=active_buckets.get) if active_buckets else None
+        pre_signal = max(precursor_counts, key=precursor_counts.get) if precursor_counts else None
+
+        return {
+            "peak_time_window": peak_window,
+            "pre_loop_signal": pre_signal,
+        }
 
 def create_db_manager() -> BehavioralStateManager:
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")

@@ -115,6 +115,8 @@ class AnalysisResponse(BaseModel):
     crisis_detected: Optional[bool] = None
     crisis_resources: Optional[CrisisResourcesResponse] = None
     detected_keywords: Optional[List[str]] = None
+    early_warning_message: Optional[str] = None
+    environment_audit_prompt: Optional[bool] = None
 
 class InsightResponse(BaseModel):
     """For the Dashboard summary card."""
@@ -130,6 +132,31 @@ class InsightResponse(BaseModel):
     days_practiced_this_week: Optional[int] = None
     values_nudge: Optional[str] = None
     identity_statement: Optional[str] = None
+    peak_time_window: Optional[str] = None
+    pre_loop_signal: Optional[str] = None
+    environment_audit_prompt: Optional[bool] = None
+
+
+class EnvironmentAuditRequest(BaseModel):
+    """Environmental design friction audit."""
+    target_loop: str = Field(..., min_length=1, max_length=100)
+    checked_items: List[str] = Field(default_factory=list, max_length=20)
+    custom_friction_step: str = Field("", max_length=500)
+
+
+class EnvironmentAuditResponse(BaseModel):
+    """Saved environmental design audit."""
+    target_loop: str = ""
+    checked_items: List[str] = Field(default_factory=list)
+    custom_friction_step: str = ""
+    updated_at: Optional[str] = None
+
+
+class WeeklyNarrativeResponse(BaseModel):
+    """AI coaching narrative for the week."""
+    narrative: str
+    peak_time_window: Optional[str] = None
+    pre_loop_signal: Optional[str] = None
 
 
 class UserProfileRequest(BaseModel):

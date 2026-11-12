@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/api_client.dart';
 import '../widgets/expandable_history_entry.dart';
@@ -19,6 +22,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   late Future<Map<String, dynamic>> _statsFuture;
   late Future<Map<String, dynamic>> _loopPathFuture;
   late Future<List<Map<String, dynamic>>> _weeklyComparisonFuture;
+  late Future<Map<String, dynamic>> _weeklyNarrativeFuture;
 
   @override
   void initState() {
@@ -31,6 +35,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _fetchCurrentWeekSummary(),
       _fetchPreviousWeekSummary(),
     ]);
+    _weeklyNarrativeFuture = ApiClient.getWeeklyNarrative();
   }
 
   void _refreshHistory() {
@@ -43,13 +48,95 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _fetchCurrentWeekSummary(),
         _fetchPreviousWeekSummary(),
       ]);
+      _weeklyNarrativeFuture = ApiClient.getWeeklyNarrative();
     });
+  }
+
+  Future<void> _showExportDialog(BuildContext context) async {
+    final bundle = await ApiClient.exportJourney();
+    if (!context.mounted) return;
+    final prettyJson = const JsonEncoder.withIndent('  ').convert(bundle);
+    final insight = bundle['insight'] as Map<String, dynamic>? ?? {};
+    final topLoop = insight['top_loop'] ?? 'None';
+    final streak = insight['streak'] ?? 0;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Export & Share Progress'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Shareable Summary: Top Loop: $topLoop • Streak: $streak days',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF5B9B96),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    prettyJson.length > 400
+                        ? '${prettyJson.substring(0, 400)}...'
+                        : prettyJson,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await Clipboard.setData(ClipboardData(text: prettyJson));
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Journey export copied to clipboard!'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy JSON'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Journey Dashboard')),
+      appBar: AppBar(
+        title: const Text('Journey Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Export Journey',
+            onPressed: () => _showExportDialog(context),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<dynamic>>(
         future: _historyFuture,
         builder: (context, snapshot) {
@@ -149,6 +236,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     weeklyActivity,
                     streak,
                     daysPracticedThisWeek: daysPracticed,
+                  );
+                },
+              ),
+              // Weekly Coaching Narrative
+              FutureBuilder<Map<String, dynamic>>(
+                future: _weeklyNarrativeFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  final narrative =
+                      snapshot.data!['narrative'] as String? ?? '';
+                  if (narrative.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF8F6),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE0D5CC)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Weekly Pattern Narrative',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF5B9B96),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            narrative,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[800],
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
