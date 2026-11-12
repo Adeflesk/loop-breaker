@@ -21,6 +21,7 @@ except ImportError:
     sentry_sdk = None
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .ai import DEFAULT_GEMINI_MODEL, generate_weekly_narrative, query_local_ai
 from .crisis import CrisisSafetyService
@@ -1033,6 +1034,16 @@ async def export_journey(
     except Exception:
         logger.error("Export failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Export service unavailable")
+
+
+if os.getenv("SERVE_STATIC_WEB", "false").lower() == "true":  # pragma: no cover
+    default_web_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "build", "web")
+    )
+    static_web_dir = os.getenv("STATIC_WEB_DIR", default_web_dir)
+    if os.path.isdir(static_web_dir):
+        app.mount("/", StaticFiles(directory=static_web_dir, html=True), name="static_web")
+        logger.info("Serving static Flutter web app from %s", static_web_dir)
 
 
 if __name__ == "__main__":
