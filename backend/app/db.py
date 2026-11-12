@@ -1340,7 +1340,14 @@ class BehavioralStateManager:
             "pre_loop_signal": pre_signal,
         }
 
-def create_db_manager() -> BehavioralStateManager:
+def create_db_manager() -> Any:
+    db_backend = os.getenv("DB_BACKEND", "neo4j").strip().lower()
+    if db_backend == "sqlite":
+        from .sqlite_db import SQLiteStateManager
+
+        sqlite_path = os.getenv("SQLITE_PATH", "loopbreaker.db")
+        return SQLiteStateManager(sqlite_path)
+
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")
     password = os.getenv("NEO4J_PASSWORD")

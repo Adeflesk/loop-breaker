@@ -11,6 +11,25 @@ class ApiClient {
   static const String _baseUrl = kBackendBaseUrl;
   static http.Client? clientOverride;
   static final http.Client _defaultClient = http.Client();
+  static String? passcode;
+
+  static Map<String, String> _headers({
+    bool json = false,
+    Map<String, String>? extra,
+  }) {
+    final headers = <String, String>{};
+    if (json) {
+      headers['Content-Type'] = 'application/json';
+    }
+    final code = passcode;
+    if (code != null && code.isNotEmpty) {
+      headers['X-App-Passcode'] = code;
+    }
+    if (extra != null) {
+      headers.addAll(extra);
+    }
+    return headers;
+  }
   static const int _defaultTimeoutSeconds = 30;
   static const int _maxRetries = 3;
 
@@ -104,7 +123,7 @@ class ApiClient {
       () async {
         final response = await _httpClient.post(
           _uri('/analyze'),
-          headers: {'Content-Type': 'application/json'},
+          headers: _headers(json: true),
           body: jsonEncode({'user_text': text}),
         );
 
@@ -133,7 +152,7 @@ class ApiClient {
 
     await _httpClient.post(
       _uri('/feedback'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode(payload),
     );
   }
@@ -141,7 +160,7 @@ class ApiClient {
   static Future<Map<String, dynamic>> fetchInsight() async {
     try {
       return await _withRetry(() async {
-        final response = await _httpClient.get(_uri('/insight'));
+        final response = await _httpClient.get(_uri('/insight'), headers: _headers());
         if (response.statusCode == 200) {
           return jsonDecode(response.body) as Map<String, dynamic>;
         }
@@ -156,7 +175,7 @@ class ApiClient {
   static Future<Map<String, dynamic>> fetchStats() async {
     try {
       return await _withRetry(() async {
-        final response = await _httpClient.get(_uri('/stats'));
+        final response = await _httpClient.get(_uri('/stats'), headers: _headers());
         if (response.statusCode == 200) {
           return jsonDecode(response.body) as Map<String, dynamic>;
         }
@@ -182,7 +201,7 @@ class ApiClient {
     try {
       final data = await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/history'));
+          final response = await _httpClient.get(_uri('/history'), headers: _headers());
           if (response.statusCode == 200) {
             final decoded = jsonDecode(response.body);
             if (decoded is List) {
@@ -212,7 +231,7 @@ class ApiClient {
   static Future<bool> resetData() async {
     final response = await _httpClient.delete(
       _uri('/reset'),
-      headers: {'X-Confirm-Reset': 'CONFIRM'},
+      headers: _headers(extra: {'X-Confirm-Reset': 'CONFIRM'}),
     );
     if (response.statusCode == 200) {
       clearCache();
@@ -225,7 +244,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.post(
         _uri('/thought-record'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode(data),
       );
 
@@ -239,7 +258,7 @@ class ApiClient {
     try {
       return await _withRetry(() async {
         final response = await _httpClient.get(
-          _uri('/thought-records?limit=$limit&offset=$offset'),
+          _uri('/thought-records?limit=$limit&offset=$offset'), headers: _headers(),
         );
         if (response.statusCode == 200) {
           final decoded = jsonDecode(response.body);
@@ -259,7 +278,7 @@ class ApiClient {
     try {
       return await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/loop-path?days=$days'));
+          final response = await _httpClient.get(_uri('/loop-path?days=$days'), headers: _headers());
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
           }
@@ -276,7 +295,7 @@ class ApiClient {
   static Future<List<dynamic>> fetchJournalEntries({int limit = 50}) async {
     try {
       return await _withRetry(() async {
-        final response = await _httpClient.get(_uri('/journal-entries?limit=$limit'));
+        final response = await _httpClient.get(_uri('/journal-entries?limit=$limit'), headers: _headers());
         if (response.statusCode == 200) {
           final decoded = jsonDecode(response.body);
           if (decoded is List) {
@@ -299,7 +318,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.patch(
         _uri('/journal-entries/$entryId/outcome'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode({'outcome': outcome, 'notes': notes}),
       );
       if (response.statusCode != 200) {
@@ -316,6 +335,7 @@ class ApiClient {
             Uri.parse('$_baseUrl/weekly-summary').replace(
               queryParameters: {'week_start': weekStart},
             ),
+            headers: _headers(),
           );
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
@@ -341,6 +361,7 @@ class ApiClient {
             Uri.parse('$_baseUrl/history').replace(
               queryParameters: {'start_date': start, 'end_date': end, 'limit': '500'},
             ),
+            headers: _headers(),
           );
           if (response.statusCode == 200) {
             final decoded = jsonDecode(response.body);
@@ -360,7 +381,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.post(
         _uri('/daily-check'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode(data),
       );
       if (response.statusCode != 201) {
@@ -374,7 +395,7 @@ class ApiClient {
       return await _withRetry(
         () async {
           final response = await _httpClient.get(
-            _uri('/daily-check-correlation?days=$days'),
+            _uri('/daily-check-correlation?days=$days'), headers: _headers(),
           );
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
@@ -393,7 +414,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.post(
         _uri('/practice'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode(data),
       );
       if (response.statusCode != 201) {
@@ -407,7 +428,7 @@ class ApiClient {
       return await _withRetry(
         () async {
           final response = await _httpClient.get(
-            _uri('/practice-stats?limit=$limit'),
+            _uri('/practice-stats?limit=$limit'), headers: _headers(),
           );
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
@@ -431,7 +452,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.post(
         _uri('/profile'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode(data),
       );
       if (response.statusCode != 200 && response.statusCode != 201) {
@@ -444,7 +465,7 @@ class ApiClient {
     try {
       return await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/profile'));
+          final response = await _httpClient.get(_uri('/profile'), headers: _headers());
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
           }
@@ -465,7 +486,7 @@ class ApiClient {
     return _withRetry(() async {
       final response = await _httpClient.post(
         _uri('/environment-audit'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(json: true),
         body: jsonEncode(data),
       );
       if (response.statusCode != 200 && response.statusCode != 201) {
@@ -478,7 +499,7 @@ class ApiClient {
     try {
       return await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/environment-audit'));
+          final response = await _httpClient.get(_uri('/environment-audit'), headers: _headers());
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
           }
@@ -500,7 +521,7 @@ class ApiClient {
     try {
       return await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/weekly-narrative'));
+          final response = await _httpClient.get(_uri('/weekly-narrative'), headers: _headers());
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
           }
@@ -514,11 +535,45 @@ class ApiClient {
     return {};
   }
 
+  static Future<bool> isAuthRequired() async {
+    try {
+      final response = await _httpClient
+          .get(_uri('/auth/status'))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['auth_required'] == true;
+      }
+    } catch (e) {
+      debugPrint('Auth status check error: $e');
+    }
+    return false;
+  }
+
+  static Future<bool> verifyPasscode(String code) async {
+    try {
+      final response = await _httpClient
+          .post(
+            _uri('/auth/verify'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'passcode': code}),
+          )
+          .timeout(const Duration(seconds: 10));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Passcode verify error: $e');
+      return false;
+    }
+  }
+
   static Future<Map<String, dynamic>> exportJourney() async {
     try {
       return await _withRetry(
         () async {
-          final response = await _httpClient.get(_uri('/export'));
+          final response = await _httpClient.get(
+            _uri('/export'),
+            headers: _headers(),
+          );
           if (response.statusCode == 200) {
             return jsonDecode(response.body) as Map<String, dynamic>;
           }

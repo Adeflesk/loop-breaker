@@ -1,3 +1,4 @@
+import hmac
 import logging
 import os
 import time
@@ -21,6 +22,7 @@ except ImportError:
     sentry_sdk = None
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .ai import DEFAULT_GEMINI_MODEL, generate_weekly_narrative, query_local_ai
 from .crisis import CrisisSafetyService
@@ -122,6 +124,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_PROTECTED_API_PREFIXES = (
+    "/analyze",
+    "/insight",
+    "/loop-path",
+    "/history",
+    "/weekly-summary",
+    "/daily-check",
+    "/daily-check-correlation",
+    "/feedback",
+    "/journal-entries",
+    "/stats",
+    "/reset",
+    "/thought-record",
+    "/thought-records",
+    "/practice",
+    "/practice-stats",
+    "/profile",
+    "/environment-audit",
+    "/weekly-narrative",
+    "/export",
+)
+
+
+@app.middleware("http")
+async def passcode_auth_middleware(request: Request, call_next):
+    configured_passcode = os.getenv("APP_PASSCODE", "").strip()
+    if (
+        configured_passcode
+        and request.method != "OPTIONS"
+        and request.url.path.startswith(_PROTECTED_API_PREFIXES)
+    ):
+        provided = request.headers.get("X-App-Passcode", "")
+        if not hmac.compare_digest(provided, configured_passcode):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing app passcode"},
+            )
+    return await call_next(request)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.get("/auth/status")
+async def auth_status():
+    return {"auth_required": bool(os.getenv("APP_PASSCODE", "").strip())}
+
+
+@app.post("/auth/verify")
+async def auth_verify(payload: dict):
+    configured_passcode = os.getenv("APP_PASSCODE", "").strip()
+    if not configured_passcode:
+        return {"authenticated": True}
+    provided = str(payload.get("passcode", ""))
+    if hmac.compare_digest(provided, configured_passcode):
+        return {"authenticated": True}
+    raise HTTPException(status_code=401, detail="Invalid passcode")
 
 
 @app.middleware("http")
@@ -1033,6 +1096,16 @@ async def export_journey(
     except Exception:
         logger.error("Export failed", exc_info=True, extra={"request_id": request_id})
         raise HTTPException(status_code=503, detail="Export service unavailable")
+
+
+if os.getenv("SERVE_STATIC_WEB", "false").lower() == "true":  # pragma: no cover
+    default_web_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "build", "web")
+    )
+    static_web_dir = os.getenv("STATIC_WEB_DIR", default_web_dir)
+    if os.path.isdir(static_web_dir):
+        app.mount("/", StaticFiles(directory=static_web_dir, html=True), name="static_web")
+        logger.info("Serving static Flutter web app from %s", static_web_dir)
 
 
 if __name__ == "__main__":
