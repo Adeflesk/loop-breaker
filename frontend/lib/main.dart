@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_modal.dart';
+import 'screens/passcode_lock_screen.dart';
+import 'services/api_client.dart';
 
 void main() {
   runApp(const LoopBreakerApp());
@@ -117,26 +119,57 @@ class AppHome extends StatefulWidget {
 
 class _AppHomeState extends State<AppHome> {
   static const _onboardingKey = 'has_seen_onboarding';
+  static const _passcodeKey = 'app_passcode';
   bool _hasSeenOnboarding = false;
+  bool _needsPasscode = false;
 
   @override
   void initState() {
     super.initState();
-    _loadOnboardingState();
+    _loadInitialState();
   }
 
-  Future<void> _loadOnboardingState() async {
+  Future<void> _loadInitialState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final seen = prefs.getBool(_onboardingKey) ?? false;
+      final savedCode = prefs.getString(_passcodeKey);
       if (mounted && seen) {
         setState(() {
           _hasSeenOnboarding = true;
         });
       }
+
+      final authRequired = await ApiClient.isAuthRequired();
+      if (!authRequired) return;
+
+      if (savedCode != null && savedCode.isNotEmpty) {
+        final ok = await ApiClient.verifyPasscode(savedCode);
+        if (ok) {
+          ApiClient.passcode = savedCode;
+          return;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _needsPasscode = true;
+        });
+      }
     } catch (_) {
-      // Fallback to false if SharedPreferences is unavailable in test context
+      // Fallback gracefully if SharedPreferences or network is unavailable
     }
+  }
+
+  void _onPasscodeUnlocked(String code) {
+    ApiClient.passcode = code;
+    setState(() {
+      _needsPasscode = false;
+    });
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setString(_passcodeKey, code),
+      onError: (_) {},
+    );
   }
 
   void _completeOnboarding() {
@@ -151,6 +184,9 @@ class _AppHomeState extends State<AppHome> {
 
   @override
   Widget build(BuildContext context) {
+    if (_needsPasscode) {
+      return PasscodeLockScreen(onUnlocked: _onPasscodeUnlocked);
+    }
     if (!_hasSeenOnboarding) {
       return OnboardingModal(onComplete: _completeOnboarding);
     }
