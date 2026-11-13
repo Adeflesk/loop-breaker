@@ -122,6 +122,7 @@ class _AppHomeState extends State<AppHome> {
   static const _passcodeKey = 'app_passcode';
   bool _hasSeenOnboarding = false;
   bool _needsPasscode = false;
+  int _authEpoch = 0;
 
   @override
   void initState() {
@@ -147,6 +148,11 @@ class _AppHomeState extends State<AppHome> {
         final ok = await ApiClient.verifyPasscode(savedCode);
         if (ok) {
           ApiClient.passcode = savedCode;
+          if (mounted) {
+            setState(() {
+              _authEpoch++;
+            });
+          }
           return;
         }
       }
@@ -165,6 +171,7 @@ class _AppHomeState extends State<AppHome> {
     ApiClient.passcode = code;
     setState(() {
       _needsPasscode = false;
+      _authEpoch++;
     });
     SharedPreferences.getInstance().then(
       (prefs) => prefs.setString(_passcodeKey, code),
@@ -190,6 +197,9 @@ class _AppHomeState extends State<AppHome> {
     if (!_hasSeenOnboarding) {
       return OnboardingModal(onComplete: _completeOnboarding);
     }
-    return const HomeShell();
+    return KeyedSubtree(
+      key: ValueKey(_authEpoch),
+      child: const HomeShell(),
+    );
   }
 }
