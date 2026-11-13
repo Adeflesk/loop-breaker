@@ -43,6 +43,17 @@ class BehavioralStateManager:
     def close(self) -> None:
         self.driver.close()
 
+    def ping(self) -> bool:
+        """Runs a lightweight query to verify connectivity and prevent AuraDB auto-pause."""
+        try:
+            with self.driver.session() as session:
+                session.run("RETURN 1 AS ok").consume()
+            self.is_available = True
+            return True
+        except Exception:
+            logger.warning("Neo4j ping failed", exc_info=True)
+            return False
+
     def _bootstrap_nodes(self) -> None:
         """Creates the foundation and warms up the schema."""
         nodes = list(INTERVENTIONS.keys())

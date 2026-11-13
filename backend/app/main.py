@@ -167,7 +167,15 @@ async def passcode_auth_middleware(request: Request, call_next):
 
 
 @app.get("/health")
-async def health_check():
+async def health_check(
+    db_ping: bool = Query(False, alias="db"),
+    request: Request = None,
+):
+    if db_ping and request is not None:
+        db = getattr(request.app.state, "db", None)
+        if db is not None and hasattr(db, "ping"):
+            return {"status": "ok", "db_available": bool(db.ping())}
+        return {"status": "ok", "db_available": bool(getattr(db, "is_available", False))}
     return {"status": "ok"}
 
 

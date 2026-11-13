@@ -65,6 +65,11 @@ def test_lifespan_logs_ready_when_gemini_api_key_set(
 
 def test_health_and_passcode_auth(monkeypatch):
     class FakeDB:
+        is_available = True
+
+        def ping(self):
+            return True
+
         def get_history(self, start_date=None, end_date=None, limit=500):
             return []
 
@@ -77,6 +82,7 @@ def test_health_and_passcode_auth(monkeypatch):
     with patch("app.main.create_db_manager", return_value=FakeDB()):
         with TestClient(app_main.app) as client:
             assert client.get("/health").status_code == 200
+            assert client.get("/health?db=true").json() == {"status": "ok", "db_available": True}
             assert client.get("/auth/status").json() == {"auth_required": True}
 
             # Missing or wrong passcode rejected on protected API routes

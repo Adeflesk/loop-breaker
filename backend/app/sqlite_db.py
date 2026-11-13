@@ -139,6 +139,17 @@ class SQLiteStateManager:
         with self._lock:
             self._conn.close()
 
+    def ping(self) -> bool:
+        """Runs a lightweight query to verify SQLite connectivity."""
+        try:
+            with self._lock:
+                self._conn.execute("SELECT 1").fetchone()
+            self.is_available = True
+            return True
+        except Exception:
+            logger.warning("SQLite ping failed", exc_info=True)
+            return False
+
     def log_and_analyze(
         self,
         node_name: str,
