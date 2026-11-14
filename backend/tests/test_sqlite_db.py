@@ -62,6 +62,11 @@ def test_sqlite_log_and_analyze_loop_and_resolve(sqlite_db):
     _, loop4 = sqlite_db.log_and_analyze("Stress", 0.8)
     assert loop4 is False
 
+    # Resolving feedback on a non-loop entry should still record was_successful in history
+    sqlite_db.resolve_intervention(True)
+    history = sqlite_db.get_history()
+    assert history[0]["was_successful"] is True
+
 
 def test_sqlite_stale_intervention_cleanup(sqlite_db):
     old_ts = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()

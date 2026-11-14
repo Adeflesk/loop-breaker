@@ -248,11 +248,21 @@ class SQLiteStateManager:
                     LIMIT 1
                     """
                 ).fetchone()
+                if not row:
+                    row = self._conn.execute(
+                        """
+                        SELECT id FROM entries
+                        WHERE outcome_success IS NULL
+                        ORDER BY timestamp DESC, id DESC
+                        LIMIT 1
+                        """
+                    ).fetchone()
                 if row:
                     self._conn.execute(
                         """
                         UPDATE entries
-                        SET outcome_success = ?,
+                        SET intervention_title = COALESCE(intervention_title, 'Circuit Breaker'),
+                            outcome_success = ?,
                             outcome_skipped = 0,
                             outcome_timestamp = ?,
                             hydration = ?,

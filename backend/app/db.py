@@ -162,7 +162,7 @@ class BehavioralStateManager:
         needs = needs_check or {}
         try:
             with self.driver.session() as session:
-                session.run("""
+                res = session.run("""
                     MATCH (e:Entry)-[:HAS_INTERVENTION]->(i:Intervention)
                     WHERE NOT (i)-[:HAS_OUTCOME]->()
                     WITH i ORDER BY i.timestamp DESC LIMIT 1
@@ -176,6 +176,7 @@ class BehavioralStateManager:
                         movement: $movement
                     })
                     CREATE (i)-[:HAS_OUTCOME]->(o)
+                    RETURN count(o) AS resolved
                 """,
                 success=was_successful,
                 hydration=needs.get("hydration"),
@@ -183,6 +184,34 @@ class BehavioralStateManager:
                 rest=needs.get("rest"),
                 movement=needs.get("movement"),
                 )
+                resolved_record = res.single()
+                resolved_count = resolved_record["resolved"] if resolved_record else 0
+
+                if resolved_count == 0:
+                    # Fallback when user completes an intervention on a non-loop entry
+                    session.run("""
+                        MATCH (e:Entry)
+                        WHERE NOT (e)-[:HAS_INTERVENTION]->()
+                        WITH e ORDER BY e.timestamp DESC LIMIT 1
+                        CREATE (i:Intervention {title: 'Circuit Breaker', task: '', type: 'other', timestamp: datetime()})
+                        CREATE (e)-[:HAS_INTERVENTION]->(i)
+                        CREATE (o:Outcome {
+                            success: $success,
+                            skipped: false,
+                            timestamp: datetime(),
+                            hydration: $hydration,
+                            fuel: $fuel,
+                            rest: $rest,
+                            movement: $movement
+                        })
+                        CREATE (i)-[:HAS_OUTCOME]->(o)
+                    """,
+                    success=was_successful,
+                    hydration=needs.get("hydration"),
+                    fuel=needs.get("fuel"),
+                    rest=needs.get("rest"),
+                    movement=needs.get("movement"),
+                    )
                 
                 # If intervention was successful, reset the loop history
                 # to allow fresh start and prevent overaggressively tagging recurring patterns

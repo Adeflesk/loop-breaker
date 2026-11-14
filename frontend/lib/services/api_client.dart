@@ -131,6 +131,7 @@ class ApiClient {
           throw Exception('Analyze failed with status ${response.statusCode}');
         }
 
+        clearCache();
         return jsonDecode(response.body) as Map<String, dynamic>;
       },
       timeoutSeconds: _analyzeTimeoutSeconds,
@@ -155,6 +156,7 @@ class ApiClient {
       headers: _headers(json: true),
       body: jsonEncode(payload),
     );
+    clearCache();
   }
 
   static Future<Map<String, dynamic>> fetchInsight() async {
@@ -324,6 +326,7 @@ class ApiClient {
       if (response.statusCode != 200) {
         throw Exception('Journal outcome failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 
