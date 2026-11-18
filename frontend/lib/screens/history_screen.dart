@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../services/api_client.dart';
 import '../widgets/expandable_history_entry.dart';
+import '../widgets/interruption_success_card.dart';
 import '../widgets/loop_path_chart.dart';
 import '../widgets/weekly_scorecard.dart';
 
@@ -224,6 +225,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ],
                 ),
               ),
+              InterruptionSuccessCard(historyEntries: data),
               // Weekly Scorecard
               FutureBuilder<Map<String, dynamic>>(
                 future: _insightFuture,
