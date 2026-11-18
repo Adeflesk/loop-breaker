@@ -95,3 +95,26 @@ def test_health_and_passcode_auth(monkeypatch):
 
             # Correct passcode grants access
             assert client.get("/history", headers={"X-App-Passcode": "secret-1234"}).status_code == 200
+
+
+def test_auth_verify_rate_limiting(monkeypatch):
+    class FakeDB:
+        is_available = True
+
+        def close(self):
+            pass
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("APP_PASSCODE", "secret-1234")
+    app_main._auth_failures.clear()
+
+    with patch("app.main.create_db_manager", return_value=FakeDB()):
+        with TestClient(app_main.app) as client:
+            headers = {"X-Forwarded-For": "203.0.113.42"}
+            for _ in range(app_main._AUTH_MAX_ATTEMPTS):
+                resp = client.post("/auth/verify", json={"passcode": "wrong"}, headers=headers)
+                assert resp.status_code == 401
+
+            blocked = client.post("/auth/verify", json={"passcode": "secret-1234"}, headers=headers)
+            assert blocked.status_code == 429
+            assert "Retry-After" in blocked.headers

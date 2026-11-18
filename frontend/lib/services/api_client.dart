@@ -253,6 +253,7 @@ class ApiClient {
       if (response.statusCode != 201) {
         throw Exception('Thought record creation failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 
@@ -390,6 +391,7 @@ class ApiClient {
       if (response.statusCode != 201) {
         throw Exception('Daily check failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 
@@ -423,6 +425,7 @@ class ApiClient {
       if (response.statusCode != 201) {
         throw Exception('Practice session failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 
@@ -461,6 +464,7 @@ class ApiClient {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Profile save failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 
@@ -495,6 +499,7 @@ class ApiClient {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Environment audit save failed with status ${response.statusCode}');
       }
+      clearCache();
     });
   }
 

@@ -184,14 +184,45 @@ async def auth_status():
     return {"auth_required": bool(os.getenv("APP_PASSCODE", "").strip())}
 
 
+_AUTH_MAX_ATTEMPTS = 5
+_AUTH_WINDOW_SECONDS = 60
+_auth_failures: dict[str, list[float]] = {}
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.post("/auth/verify")
-async def auth_verify(payload: dict):
+async def auth_verify(payload: dict, request: Request):
     configured_passcode = os.getenv("APP_PASSCODE", "").strip()
     if not configured_passcode:
         return {"authenticated": True}
+
+    client_ip = _get_client_ip(request)
+    now = time.monotonic()
+    recent = [
+        ts for ts in _auth_failures.get(client_ip, []) if now - ts < _AUTH_WINDOW_SECONDS
+    ]
+    _auth_failures[client_ip] = recent
+    if len(recent) >= _AUTH_MAX_ATTEMPTS:
+        retry_after = max(1, int(_AUTH_WINDOW_SECONDS - (now - recent[0])))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed passcode attempts. Please wait and try again.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     provided = str(payload.get("passcode", ""))
     if hmac.compare_digest(provided, configured_passcode):
+        _auth_failures.pop(client_ip, None)
         return {"authenticated": True}
+
+    recent.append(now)
+    _auth_failures[client_ip] = recent
     raise HTTPException(status_code=401, detail="Invalid passcode")
 
 
