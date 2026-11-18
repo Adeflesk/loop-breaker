@@ -343,13 +343,45 @@ def compute_arc_position(node: str, sublabel: Optional[str]) -> tuple:
 
 
 def get_alternatives(state: str, sublabel: str | None) -> list[dict]:
-    """Return up to 2 fallback interventions for the given state from the catalog."""
+    """Return fallback interventions for the given state from the catalog."""
     state_entry = INTERVENTIONS.get(state)
     if not state_entry:
         return []
     if isinstance(state_entry, dict) and "alternatives" in state_entry:
-        return list(state_entry["alternatives"])[:2]
+        return list(state_entry["alternatives"])
     return []
+
+
+def rank_interventions_by_effectiveness(
+    default_breaker: dict,
+    alternatives: list[dict],
+    effectiveness_data: dict | None,
+) -> tuple[dict, list[dict]]:
+    """Promote the highest-performing intervention when outcome history exists.
+
+    Untested options receive a neutral 50% prior so a proven winner (>50%)
+    can take the primary slot and a proven underperformer (<50%) yields to
+    untested or higher-scoring alternatives, while ties preserve catalog order.
+    """
+    if not effectiveness_data:
+        return default_breaker, list(alternatives)[:2]
+
+    candidates = [default_breaker, *alternatives]
+
+    def _score(idx_item: tuple[int, dict]) -> tuple[int, int, int]:
+        idx, item = idx_item
+        stats = effectiveness_data.get(item.get("title", ""))
+        if isinstance(stats, dict) and stats.get("total", 0) > 0:
+            return (int(stats.get("percentage", 0)), int(stats.get("total", 0)), -idx)
+        return (50, 0, -idx)
+
+    ranked = [item for _, item in sorted(enumerate(candidates), key=_score, reverse=True)]
+    primary = dict(ranked[0])
+    if not primary.get("education") and default_breaker.get("education"):
+        primary["education"] = default_breaker["education"]
+    if not primary.get("type") and default_breaker.get("type"):
+        primary["type"] = default_breaker["type"]
+    return primary, ranked[1:3]
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
@@ -416,21 +448,39 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         or "General"
     )
 
-    # 2. Get the specific "Circuit Breaker" from interventions.py
-    # Supports both simple interventions and sublabel-variant interventions.
-    # Variants have a None key for default; simple interventions are just the dict.
+    # 2. Fetch personal effectiveness history & select primary "Circuit Breaker"
     intervention_options = INTERVENTIONS.get(node)
 
     if intervention_options and None in intervention_options:
         # State has sublabel variants—try to match sublabel first, then None default
-        breaker = intervention_options.get(sublabel) or intervention_options.get(None)
+        default_breaker = intervention_options.get(sublabel) or intervention_options.get(None)
     else:
         # Regular intervention (no variants, or state not found)
-        breaker = intervention_options or {
+        default_breaker = intervention_options or {
             "title": "General Check-in",
             "task": "Take a moment to breathe and observe your surroundings.",
             "education": "Checking in helps move from reactive patterns to conscious awareness."
         }
+
+    effectiveness_data = None
+    intervention_effectiveness = None
+    try:
+        effectiveness_data = db.get_intervention_effectiveness(
+            state=node,
+            sublabel=sublabel
+        )
+        if effectiveness_data:
+            intervention_effectiveness = {
+                key: InterventionStats(**value)
+                for key, value in effectiveness_data.items()
+            }
+    except Exception:
+        logger.warning("Failed to fetch intervention effectiveness", exc_info=True)
+
+    all_alternatives = get_alternatives(node, sublabel)
+    breaker, raw_alternatives = rank_interventions_by_effectiveness(
+        default_breaker, all_alternatives, effectiveness_data
+    )
 
     # 3. Log to Neo4j via db.py and check for behavioral loops
     # This stores the entry and links it to the Node and Intervention
@@ -447,9 +497,8 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         logger.error("DB log failed in /analyze", exc_info=True, extra={"request_id": request_id})
         risk, is_loop = "Low", False
 
-    # 3b. Fetch personal context (non-blocking, non-critical)
+    # 3b. Fetch personal loop context (non-blocking, non-critical)
     personal_loop = None
-    intervention_effectiveness = None
 
     try:
         loop_data = db.analyze_loop_path(days=30)
@@ -461,19 +510,6 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
             )
     except Exception:
         logger.warning("Failed to fetch loop pattern", exc_info=True)
-
-    try:
-        effectiveness_data = db.get_intervention_effectiveness(
-            state=node,
-            sublabel=sublabel
-        )
-        if effectiveness_data:
-            intervention_effectiveness = {
-                key: InterventionStats(**value)
-                for key, value in effectiveness_data.items()
-            }
-    except Exception:
-        logger.warning("Failed to fetch intervention effectiveness", exc_info=True)
 
     # 4. Compute arc position (8-node loop positioning)
     arc_pos, arc_label = compute_arc_position(node, sublabel)
@@ -516,8 +552,7 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
             logger.error("Shame count check failed", exc_info=True, extra={"request_id": request_id})
             shame_safety_alert = False
 
-    # 6a. Populate alternatives for "This isn't helping" cycling
-    raw_alternatives = get_alternatives(node, sublabel)
+    # 6a. Populate ranked alternatives for "This isn't helping" cycling
     alternatives = [AlternativeIntervention(**alt) for alt in raw_alternatives] if raw_alternatives else None
 
     # 6b. Determine education depth from DB seen_count (when flag enabled) or default to "introduce"

@@ -118,3 +118,35 @@ def test_auth_verify_rate_limiting(monkeypatch):
             blocked = client.post("/auth/verify", json={"passcode": "secret-1234"}, headers=headers)
             assert blocked.status_code == 429
             assert "Retry-After" in blocked.headers
+
+
+def test_rank_interventions_by_effectiveness_promotes_winner():
+    default_breaker = {
+        "title": "Box Breathing",
+        "task": "Breathe 4-4-4-4",
+        "education": {"introduce": "Calms nervous system."},
+        "type": "breathing",
+    }
+    alternatives = [
+        {"title": "5-Min Walk", "task": "Walk outside", "type": "movement"},
+        {"title": "Cold Splash", "task": "Splash cold water", "type": "somatic"},
+    ]
+
+    # Without effectiveness history, catalog order is preserved
+    primary, ranked_alts = app_main.rank_interventions_by_effectiveness(
+        default_breaker, alternatives, None
+    )
+    assert primary["title"] == "Box Breathing"
+    assert [a["title"] for a in ranked_alts] == ["5-Min Walk", "Cold Splash"]
+
+    # When an alternative outperforms the default, it is promoted to primary
+    effectiveness = {
+        "Box Breathing": {"helped": 1, "neutral": 0, "didn_help": 4, "total": 5, "percentage": 20},
+        "5-Min Walk": {"helped": 4, "neutral": 0, "didn_help": 1, "total": 5, "percentage": 80},
+    }
+    primary, ranked_alts = app_main.rank_interventions_by_effectiveness(
+        default_breaker, alternatives, effectiveness
+    )
+    assert primary["title"] == "5-Min Walk"
+    assert primary["education"] == {"introduce": "Calms nervous system."}
+    assert [a["title"] for a in ranked_alts] == ["Cold Splash", "Box Breathing"]
