@@ -3,7 +3,9 @@ import '../services/api_client.dart';
 import '../widgets/risk_level_badge.dart';
 
 class JournalHistoryScreen extends StatefulWidget {
-  const JournalHistoryScreen({super.key});
+  final bool showAppBar;
+
+  const JournalHistoryScreen({super.key, this.showAppBar = true});
 
   @override
   State<JournalHistoryScreen> createState() => _JournalHistoryScreenState();
@@ -27,10 +29,12 @@ class _JournalHistoryScreenState extends State<JournalHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Journal'),
-        elevation: 0,
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text('My Journal'),
+              elevation: 0,
+            )
+          : null,
       body: FutureBuilder<List<dynamic>>(
         future: _entriesFuture,
         builder: (context, snapshot) {

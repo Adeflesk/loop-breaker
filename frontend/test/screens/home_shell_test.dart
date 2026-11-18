@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:frontend/screens/history_hub_screen.dart';
 import 'package:frontend/screens/home_shell.dart';
+import 'package:frontend/screens/journal_history_screen.dart';
 import 'package:frontend/screens/library_screen.dart';
 import 'package:frontend/services/api_client.dart';
 
@@ -37,15 +39,37 @@ void main() {
     });
   }
 
-  testWidgets('HomeShell has exactly 5 NavigationDestination items', (tester) async {
+  testWidgets('HomeShell has exactly 4 NavigationDestination items', (tester) async {
     setupMocks();
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
     await tester.pump();
 
-    expect(find.byType(NavigationDestination), findsNWidgets(5));
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    expect(find.text('Journal'), findsOneWidget);
+    expect(find.text('History'), findsOneWidget);
+    expect(find.text('Exercises'), findsOneWidget);
+    expect(find.text('Learn'), findsOneWidget);
   });
 
-  testWidgets('5th tab is labelled Learn', (tester) async {
+  testWidgets('tapping History tab shows HistoryHubScreen with Dashboard and My Journal sub-tabs', (tester) async {
+    setupMocks();
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+    await tester.pump();
+
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HistoryHubScreen), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('My Journal'), findsOneWidget);
+
+    await tester.tap(find.text('My Journal'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(JournalHistoryScreen), findsOneWidget);
+  });
+
+  testWidgets('4th tab is labelled Learn', (tester) async {
     setupMocks();
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
     await tester.pump();

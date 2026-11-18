@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'history_screen.dart';
-import 'journal_history_screen.dart';
+import 'history_hub_screen.dart';
 import 'journal_screen.dart';
 import 'library_screen.dart';
 import 'thought_records_tab.dart';
@@ -18,9 +17,8 @@ class _HomeShellState extends State<HomeShell> {
 
   final List<Widget> _screens = [
     const JournalScreen(),
-    const HistoryScreen(),
+    const HistoryHubScreen(),
     const ThoughtRecordsTab(),
-    const JournalHistoryScreen(),
     const LibraryScreen(),
   ];
 
@@ -53,11 +51,6 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist),
             label: 'Exercises',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.book_outlined),
-            selectedIcon: Icon(Icons.book),
-            label: 'My Journal',
           ),
           NavigationDestination(
             icon: Icon(Icons.menu_book_outlined),
