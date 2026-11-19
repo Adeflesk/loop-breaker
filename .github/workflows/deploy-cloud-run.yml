@@ -7,28 +7,34 @@ on:
 
 jobs:
   deploy:
-    if: ${{ secrets.GCP_SA_KEY != '' }}
     runs-on: ubuntu-latest
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
     steps:
       - name: Checkout
+        if: ${{ env.GCP_SA_KEY != '' }}
         uses: actions/checkout@v4
 
       - name: Set up Flutter
+        if: ${{ env.GCP_SA_KEY != '' }}
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
 
       - name: Build Flutter Web bundle
+        if: ${{ env.GCP_SA_KEY != '' }}
         working-directory: frontend
         run: flutter build web --release --dart-define=BACKEND_BASE_URL=
 
       - name: Authenticate to Google Cloud
+        if: ${{ env.GCP_SA_KEY != '' }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Deploy to Cloud Run
+        if: ${{ env.GCP_SA_KEY != '' }}
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: loop-breaker
