@@ -280,6 +280,18 @@ def _build_crisis_response() -> AnalysisResponse:
             message="We're concerned about your safety. Please reach out for support:",
             hotlines=[
                 CrisisHotline(
+                    name="Samaritans Ireland",
+                    phone="116 123",
+                    url="https://www.samaritans.org/ireland/samaritans-ireland/",
+                    available="24/7",
+                ),
+                CrisisHotline(
+                    name="Text About It (Ireland)",
+                    text="Text HELLO to 50808",
+                    url="https://textaboutit.ie",
+                    available="24/7",
+                ),
+                CrisisHotline(
                     name="988 Suicide & Crisis Lifeline",
                     phone="988",
                     url="https://988lifeline.org",
@@ -297,7 +309,7 @@ def _build_crisis_response() -> AnalysisResponse:
                     note="Find resources in your country",
                 ),
             ],
-            emergency="If you are in immediate danger, call 911 (US) or your local emergency number",
+            emergency="If you are in immediate danger, call 112 or 999 (Ireland/UK), 911 (US), or your local emergency number",
         ),
         journal_entry_id=None,
     )

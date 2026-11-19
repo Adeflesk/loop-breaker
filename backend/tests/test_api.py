@@ -694,5 +694,8 @@ def test_crisis_response_includes_hotlines(client: TestClient, _patch_dependenci
 
     # Check for required hotlines
     hotline_names = [h["name"] for h in hotlines]
+    assert any("Samaritans Ireland" in name for name in hotline_names)
+    assert any("Text About It" in name for name in hotline_names)
     assert any("988" in name for name in hotline_names)
     assert any("Crisis Text" in name for name in hotline_names)
+    assert "112 or 999" in data["crisis_resources"]["emergency"]
