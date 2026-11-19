@@ -150,3 +150,31 @@ def test_rank_interventions_by_effectiveness_promotes_winner():
     assert primary["title"] == "5-Min Walk"
     assert primary["education"] == {"introduce": "Calms nervous system."}
     assert [a["title"] for a in ranked_alts] == ["Cold Splash", "Box Breathing"]
+
+
+def test_feedback_passes_outcome_type_with_backward_compatibility(monkeypatch):
+    recorded = {}
+
+    class FakeDB:
+        is_available = True
+
+        def resolve_intervention(self, was_successful, needs_check=None, outcome_type=None):
+            recorded["was_successful"] = was_successful
+            recorded["needs_check"] = needs_check
+            recorded["outcome_type"] = outcome_type
+
+        def close(self):
+            pass
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("APP_PASSCODE", raising=False)
+
+    with patch("app.main.create_db_manager", return_value=FakeDB()):
+        with TestClient(app_main.app) as client:
+            resp = client.post(
+                "/feedback",
+                json={"success": True, "outcome_type": "took_action"},
+            )
+            assert resp.status_code == 200
+            assert recorded["was_successful"] is True
+            assert recorded["outcome_type"] == "took_action"

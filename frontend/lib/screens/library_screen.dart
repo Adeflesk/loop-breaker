@@ -146,8 +146,64 @@ class LibraryScreen extends StatelessWidget {
     );
   }
 
+  static const List<Map<String, dynamic>> _stages = [
+    {
+      'title': '01 — Ditch the Negative',
+      'subtitle':
+          'Recognise patterns and understand what keeps them repeating.',
+      'states': ['Stress', 'Anxiety', 'Overwhelm'],
+    },
+    {
+      'title': '02 — Shift Your Narrative',
+      'subtitle':
+          'Challenge unhelpful thinking and practise alternative responses.',
+      'states': ['Procrastination', 'Shame'],
+    },
+    {
+      'title': '03 — Boost the Positive',
+      'subtitle':
+          'Build resilience, self-awareness and healthier everyday patterns.',
+      'states': ['Restlessness', 'Numbness'],
+    },
+  ];
+
+  Widget _buildStateTile(Map<String, dynamic> state) {
+    return ExpansionTile(
+      title: Text(
+        state['name'] as String,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      ),
+      subtitle: const Text(
+        '3 depth levels',
+        style: TextStyle(fontSize: 12, color: Colors.grey),
+      ),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      children: [
+        _educationSection(
+          'Getting Started',
+          state['getting_started'] as String,
+          _tealColor,
+        ),
+        _educationSection(
+          'Going Deeper',
+          state['going_deeper'] as String,
+          _indigoColor,
+        ),
+        _educationSection(
+          'Advanced Understanding',
+          state['advanced'] as String,
+          _purpleColor,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final stateByName = {
+      for (final s in _states) s['name'] as String: s,
+    };
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rewire Library'),
@@ -159,25 +215,41 @@ class LibraryScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        children: _states.map((state) {
-          return ExpansionTile(
-            title: Text(
-              state['name'] as String,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
-            subtitle: const Text(
-              '3 depth levels',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            children: [
-              _educationSection('Getting Started', state['getting_started'] as String, _tealColor),
-              _educationSection('Going Deeper', state['going_deeper'] as String, _indigoColor),
-              _educationSection('Advanced Understanding', state['advanced'] as String, _purpleColor),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final stage in _stages) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stage['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _tealColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      stage['subtitle'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final stateName in stage['states'] as List<String>)
+                if (stateByName.containsKey(stateName))
+                  _buildStateTile(stateByName[stateName]!),
             ],
-          );
-        }).toList(),
+          ],
+        ),
       ),
     );
   }

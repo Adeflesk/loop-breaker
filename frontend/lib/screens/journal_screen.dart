@@ -21,10 +21,30 @@ class JournalScreen extends StatefulWidget {
 class _JournalScreenState extends State<JournalScreen> {
   final TextEditingController _controller = TextEditingController();
   String _statusMessage = 'How are you feeling right now?';
+  String _detectedNode = '';
   String _riskLevel = 'Low';
   bool _isLoading = false;
   String _aiReasoning = '';
   int _alternativeIndex = -1; // -1 = primary; 0,1,... = alternatives[index]
+
+  String _describeActivationCue() {
+    switch (_detectedNode) {
+      case 'Numbness':
+      case 'Procrastination':
+        return 'Activation cue: Possible freeze / avoidance pattern';
+      case 'Shame':
+        return 'Activation cue: Self-protective threat response';
+      case 'Stress':
+      case 'Anxiety':
+      case 'Overwhelm':
+      case 'Restlessness':
+        return 'Activation cue: Elevated activation';
+      default:
+        return _riskLevel == 'High'
+            ? 'Activation cue: Elevated activation'
+            : 'Activation cue: Lower activation / settling';
+    }
+  }
   late final GoalService _goalService;
   late Future<Map<String, dynamic>> _streakFuture;
   late Future<Map<String, dynamic>> _insightFuture;
@@ -78,8 +98,9 @@ class _JournalScreenState extends State<JournalScreen> {
 
       // NORMAL FLOW: Update status and proceed to intervention
       setState(() {
-        final node = data['detected_node'] ?? 'Unknown';
+        final node = (data['detected_node'] ?? 'Unknown') as String;
         final sublabel = data['sublabel'] ?? data['emotion_sublabel'] ?? 'General';
+        _detectedNode = node;
         _statusMessage = 'Detected: $node ($sublabel)';
         _riskLevel = (data['risk_level'] ?? 'Low') as String;
         _aiReasoning = data['reasoning'] ?? 'Analysis complete.';
@@ -99,9 +120,17 @@ class _JournalScreenState extends State<JournalScreen> {
     }
   }
 
-  Future<void> _sendFeedback(bool success, {Map<String, bool>? needsCheck}) async {
+  Future<void> _sendFeedback(
+    bool success, {
+    Map<String, bool>? needsCheck,
+    String? outcomeType,
+  }) async {
     try {
-      await ApiClient.sendFeedback(success, needsCheck: needsCheck);
+      await ApiClient.sendFeedback(
+        success,
+        needsCheck: needsCheck,
+        outcomeType: outcomeType,
+      );
       if (mounted) {
         setState(() {
           _insightFuture = ApiClient.fetchInsight();
@@ -374,6 +403,69 @@ class _JournalScreenState extends State<JournalScreen> {
                           interventionTitle: title,
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Did you respond differently this time?',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          ActionChip(
+                            label: const Text(
+                              'I took action despite discomfort',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () {
+                              _sendFeedback(true, outcomeType: 'took_action');
+                              final messenger = ScaffoldMessenger.of(context);
+                              Navigator.pop(context);
+                              setState(() => _alternativeIndex = -1);
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Loop Broken! You took action despite discomfort.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                          ),
+                          ActionChip(
+                            label: const Text(
+                              'I interrupted the automatic pattern',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () {
+                              _sendFeedback(true, outcomeType: 'interrupted_pattern');
+                              final messenger = ScaffoldMessenger.of(context);
+                              Navigator.pop(context);
+                              setState(() => _alternativeIndex = -1);
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Loop Broken! You interrupted the automatic pattern.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                          ),
+                          ActionChip(
+                            label: const Text(
+                              "I haven't noticed a change yet",
+                              style: TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () {
+                              _sendFeedback(false, outcomeType: 'no_change');
+                              Navigator.pop(context);
+                              setState(() => _alternativeIndex = -1);
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                     ],
                   ],
@@ -393,7 +485,7 @@ class _JournalScreenState extends State<JournalScreen> {
                 if (!isExhausted) ...[
                   TextButton(
                     onPressed: () {
-                      _sendFeedback(false);
+                      _sendFeedback(false, outcomeType: 'didnt_help');
                       Navigator.pop(context);
                       setState(() => _alternativeIndex = -1);
                     },
@@ -404,7 +496,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      _sendFeedback(true);
+                      _sendFeedback(true, outcomeType: 'felt_better');
                       final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(context);
                       setState(() => _alternativeIndex = -1);
@@ -800,13 +892,13 @@ class _JournalScreenState extends State<JournalScreen> {
                                     : Colors.green,
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                _riskLevel == 'High'
-                                    ? 'State: Sympathetic Activation'
-                                    : 'State: Parasympathetic Recovery',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                              Expanded(
+                                child: Text(
+                                  _describeActivationCue(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1055,7 +1147,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       ),
                       const SizedBox(height: 12),
                       if (_aiReasoning.isNotEmpty) ...[const Text(
-                        "AI OBSERVATION:",
+                        "AI REFLECTION HYPOTHESIS (NOT A DIAGNOSIS):",
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,

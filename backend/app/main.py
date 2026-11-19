@@ -863,7 +863,10 @@ async def receive_feedback(body: FeedbackRequest, request: Request, db: Behavior
     request_id = getattr(request.state, "request_id", "")
     try:
         needs_payload = body.needs_check or body.halt_results
-        db.resolve_intervention(body.success, needs_payload)
+        try:
+            db.resolve_intervention(body.success, needs_payload, outcome_type=body.outcome_type)
+        except TypeError:
+            db.resolve_intervention(body.success, needs_payload)
         return {"status": "recorded"}
     except Exception:
         logger.error("Feedback recording failed", exc_info=True, extra={"request_id": request_id})

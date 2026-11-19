@@ -29,6 +29,22 @@ void main() {
     expect(metrics['topTotal'], 2);
   });
 
+  test('computeMetrics distinguishes behavioural shifts from emotional relief', () {
+    final metrics = InterruptionSuccessCard.computeMetrics([
+      {'intervention': '5-Min Walk', 'was_successful': true, 'outcome_type': 'took_action'},
+      {'intervention': '5-Min Walk', 'was_successful': true, 'outcome_type': 'interrupted_pattern'},
+      {'intervention': 'Box Breathing', 'was_successful': true, 'outcome_type': 'felt_better'},
+      {'intervention': 'Box Breathing', 'was_successful': false, 'outcome_type': 'no_change'},
+      {'intervention': 'Box Breathing', 'was_successful': false, 'outcome_type': 'didnt_help'},
+    ]);
+
+    expect(metrics['attempted'], 5);
+    expect(metrics['broken'], 3);
+    expect(metrics['behaviouralShifts'], 2);
+    expect(metrics['emotionalRelief'], 1);
+    expect(metrics['notHelped'], 1);
+  });
+
   testWidgets('renders percentage, counts, and most effective intervention', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

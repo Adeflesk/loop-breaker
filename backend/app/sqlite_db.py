@@ -49,6 +49,7 @@ class SQLiteStateManager:
                 intervention_task TEXT,
                 intervention_type TEXT,
                 outcome_success INTEGER,
+                outcome_type TEXT,
                 outcome_skipped INTEGER DEFAULT 0,
                 outcome_timestamp TEXT,
                 hydration INTEGER,
@@ -133,6 +134,10 @@ class SQLiteStateManager:
             );
             """
         )
+        try:
+            self._conn.execute("ALTER TABLE entries ADD COLUMN outcome_type TEXT")
+        except sqlite3.OperationalError:
+            pass
         self._conn.commit()
 
     def close(self) -> None:
@@ -226,6 +231,7 @@ class SQLiteStateManager:
         self,
         was_successful: bool,
         needs_check: Optional[Dict[str, bool]] = None,
+        outcome_type: Optional[str] = None,
     ) -> None:
         if not self.is_available:
             return
@@ -263,6 +269,7 @@ class SQLiteStateManager:
                         UPDATE entries
                         SET intervention_title = COALESCE(intervention_title, 'Circuit Breaker'),
                             outcome_success = ?,
+                            outcome_type = COALESCE(?, outcome_type),
                             outcome_skipped = 0,
                             outcome_timestamp = ?,
                             hydration = ?,
@@ -273,6 +280,7 @@ class SQLiteStateManager:
                         """,
                         (
                             1 if was_successful else 0,
+                            outcome_type,
                             _utc_now_iso(),
                             _bool_to_int(needs.get("hydration")),
                             _bool_to_int(needs.get("fuel")),
@@ -354,7 +362,7 @@ class SQLiteStateManager:
             with self._lock:
                 rows = self._conn.execute(
                     f"""
-                    SELECT timestamp, state, intervention_title, confidence, outcome_success
+                    SELECT timestamp, state, intervention_title, confidence, outcome_success, outcome_type
                     FROM entries
                     {where_clause}
                     ORDER BY timestamp DESC, id DESC
@@ -370,6 +378,11 @@ class SQLiteStateManager:
                     "intervention": r["intervention_title"],
                     "confidence": r["confidence"],
                     "was_successful": r["outcome_success"] == 1,
+                    **(
+                        {"outcome_type": r["outcome_type"]}
+                        if r["outcome_type"] is not None
+                        else {}
+                    ),
                 }
                 for r in rows
             ]

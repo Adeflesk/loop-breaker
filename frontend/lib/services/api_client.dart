@@ -142,8 +142,12 @@ class ApiClient {
     bool success, {
     Map<String, bool>? needsCheck,
     String? chosenVariant,
+    String? outcomeType,
   }) async {
     final payload = <String, dynamic>{'success': success};
+    if (outcomeType != null) {
+      payload['outcome_type'] = outcomeType;
+    }
     if (needsCheck != null) {
       payload['needs_check'] = needsCheck;
     }

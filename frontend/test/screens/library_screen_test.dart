@@ -5,8 +5,12 @@ import 'package:frontend/screens/library_screen.dart';
 void main() {
   Widget wrap() => const MaterialApp(home: LibraryScreen());
 
-  testWidgets('shows all 7 emotional state tiles', (tester) async {
+  testWidgets('shows all 7 emotional state tiles and 3 Rewire stage headings', (tester) async {
     await tester.pumpWidget(wrap());
+
+    expect(find.text('01 — Ditch the Negative'), findsOneWidget);
+    expect(find.text('02 — Shift Your Narrative'), findsOneWidget);
+    expect(find.text('03 — Boost the Positive'), findsOneWidget);
 
     expect(find.text('Stress'), findsOneWidget);
     expect(find.text('Anxiety'), findsOneWidget);

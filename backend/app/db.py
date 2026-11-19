@@ -151,6 +151,7 @@ class BehavioralStateManager:
         self,
         was_successful: bool,
         needs_check: Optional[Dict[str, bool]] = None,
+        outcome_type: Optional[str] = None,
     ) -> None:
         if not self.is_available:
             logger.warning("Neo4j unavailable, skipping intervention resolution")
@@ -168,6 +169,7 @@ class BehavioralStateManager:
                     WITH i ORDER BY i.timestamp DESC LIMIT 1
                     CREATE (o:Outcome {
                         success: $success,
+                        outcome_type: $outcome_type,
                         skipped: false,
                         timestamp: datetime(),
                         hydration: $hydration,
@@ -179,6 +181,7 @@ class BehavioralStateManager:
                     RETURN count(o) AS resolved
                 """,
                 success=was_successful,
+                outcome_type=outcome_type,
                 hydration=needs.get("hydration"),
                 fuel=needs.get("fuel"),
                 rest=needs.get("rest"),
@@ -197,6 +200,7 @@ class BehavioralStateManager:
                         CREATE (e)-[:HAS_INTERVENTION]->(i)
                         CREATE (o:Outcome {
                             success: $success,
+                            outcome_type: $outcome_type,
                             skipped: false,
                             timestamp: datetime(),
                             hydration: $hydration,
@@ -207,6 +211,7 @@ class BehavioralStateManager:
                         CREATE (i)-[:HAS_OUTCOME]->(o)
                     """,
                     success=was_successful,
+                    outcome_type=outcome_type,
                     hydration=needs.get("hydration"),
                     fuel=needs.get("fuel"),
                     rest=needs.get("rest"),
@@ -302,7 +307,8 @@ class BehavioralStateManager:
                         n.name as state,
                         i.title as intervention,
                         e.confidence as confidence,
-                        o.success as was_successful
+                        o.success as was_successful,
+                        o.outcome_type as outcome_type
                     ORDER BY e.timestamp DESC
                     LIMIT $limit
                 """, **params)
@@ -312,6 +318,8 @@ class BehavioralStateManager:
                     clean = record.data()
                     clean["time"] = str(clean["time"]) if clean.get("time") else ""
                     clean["was_successful"] = True if clean.get("was_successful") is True else False
+                    if clean.get("outcome_type") is None:
+                        clean.pop("outcome_type", None)
                     history_data.append(clean)
                 return history_data
         except Exception:

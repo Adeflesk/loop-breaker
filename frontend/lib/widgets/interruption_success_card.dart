@@ -11,6 +11,8 @@ class InterruptionSuccessCard extends StatelessWidget {
     int attempted = 0;
     int broken = 0;
     int notHelped = 0;
+    int behaviouralShifts = 0;
+    int emotionalRelief = 0;
     final Map<String, int> totalByIntervention = {};
     final Map<String, int> brokenByIntervention = {};
 
@@ -18,14 +20,22 @@ class InterruptionSuccessCard extends StatelessWidget {
       if (raw is! Map) continue;
       final intervention = (raw['intervention'] as String?)?.trim() ?? '';
       final wasSuccessful = raw['was_successful'];
+      final outcomeType = (raw['outcome_type'] as String?)?.trim();
       final hasIntervention = intervention.isNotEmpty || wasSuccessful != null;
       if (!hasIntervention) continue;
 
       attempted++;
       if (wasSuccessful == true) {
         broken++;
+        if (outcomeType == 'took_action' || outcomeType == 'interrupted_pattern') {
+          behaviouralShifts++;
+        } else if (outcomeType == 'felt_better') {
+          emotionalRelief++;
+        }
       } else if (wasSuccessful == false) {
-        notHelped++;
+        if (outcomeType != 'no_change') {
+          notHelped++;
+        }
       }
 
       if (intervention.isNotEmpty) {
@@ -56,6 +66,8 @@ class InterruptionSuccessCard extends StatelessWidget {
       'attempted': attempted,
       'broken': broken,
       'notHelped': notHelped,
+      'behaviouralShifts': behaviouralShifts,
+      'emotionalRelief': emotionalRelief,
       'successRate': successRate,
       'topIntervention': topIntervention,
       'topWins': topWins,
@@ -69,6 +81,8 @@ class InterruptionSuccessCard extends StatelessWidget {
     final int attempted = metrics['attempted'] as int;
     final int broken = metrics['broken'] as int;
     final int notHelped = metrics['notHelped'] as int;
+    final int behaviouralShifts = metrics['behaviouralShifts'] as int;
+    final int emotionalRelief = metrics['emotionalRelief'] as int;
     final double successRate = metrics['successRate'] as double;
     final String? topIntervention = metrics['topIntervention'] as String?;
     final int topWins = metrics['topWins'] as int;
@@ -133,6 +147,13 @@ class InterruptionSuccessCard extends StatelessWidget {
                 '${notHelped > 0 ? ' • $notHelped didn\'t help' : ''}',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
               ),
+              if (behaviouralShifts > 0 || emotionalRelief > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Behavioural shifts: $behaviouralShifts • Emotional relief: $emotionalRelief',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
               if (topIntervention != null) ...[
                 const SizedBox(height: 6),
                 Text(

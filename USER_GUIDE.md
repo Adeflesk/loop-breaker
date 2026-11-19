@@ -1,109 +1,136 @@
 # How to Use LoopBreaker
 
-**LoopBreaker** is a personal behavioral loop-breaking app built around one idea: instead of simply tracking moods, it helps you **notice a repeating pattern in the moment, interrupt it with a targeted circuit breaker, and learn what actually works for you over time**.
+> *Recognise the pattern. Rewire the response. Become who you choose to be.*
 
-The app is organized into four bottom tabs aligned with three core activities:
+**LoopBreaker** is a personal behavioral change and self-reflection app built around one principle from neuroplasticity: **you don't have to eliminate an uncomfortable feeling to change your behavior—you change a pattern by noticing it early and practicing a different response.**
 
-1. **Interrupt** (`Journal` tab) — Log what you're feeling right now and break an active loop.
-2. **Understand** (`History` tab) — Review your interruption success rate, loop patterns, weekly trends, and past journal entries.
-3. **Grow** (`Exercises` & `Learn` tabs) — Challenge unhelpful thoughts with CBT Thought Records, redesign environment friction, and learn the neuroscience behind each state.
+> **Important Note:** LoopBreaker is a personal self-reflection and behavioral learning tool. Its AI insights are **reflection hypotheses**, not medical or psychological diagnoses, and the app is not a substitute for professional mental-health or clinical care.
+
+---
+
+## The Three-Stage *Rewire* Philosophy
+
+Inspired by Nicole Vignola's *Rewire: Break the Cycle, Alter Your Thoughts and Create Lasting Change*, LoopBreaker connects everyday moments to three stages of behavioral change:
+
+1. **01 — Ditch the Negative (Awareness):** Notice automatic triggers, stress responses, and recurring loops before they take over.
+2. **02 — Shift Your Narrative (Transformation):** Challenge unhelpful thoughts, add friction to unwanted habits, and practice alternative responses even when discomfort is present.
+3. **03 — Boost the Positive (Consolidation):** Support your nervous system through sleep, hydration, movement, daily practice, and values-aligned action.
+
+These stages map across the app's four bottom tabs:
+- **Journal (Interrupt):** Notice what is happening right now and try a targeted circuit breaker.
+- **History (Understand):** Track your interruption success rate, behavioral shifts vs. emotional relief, weekly patterns, and past entries.
+- **Exercises (Grow):** Practice CBT Thought Records and redesign your environment.
+- **Learn (Rewire Library):** Explore the 8-node behavioral loop cycle and the three-stage neuroscience library.
 
 ---
 
 ## 1. Getting Started
 
 ### Opening & Unlocking the App
-- **On your phone:** Open your deployed Cloud Run URL in Safari or Chrome and use **Add to Home Screen** to launch it like a native app.
-- **Passcode Lock:** When `APP_PASSCODE` is configured on the server, you'll see the **LoopBreaker** lock screen (`Enter your private passcode to unlock your journal.`).
-  - *Security note:* After 5 incorrect passcode attempts within 60 seconds, `/auth/verify` temporarily rate-limits further guesses (`HTTP 429`) for up to a minute.
+- **On your phone:** Open your LoopBreaker web link in Safari or Chrome and choose **Add to Home Screen** so it launches like a native app.
+- **Private Passcode Lock:** If you have enabled a private passcode, enter it on the **LoopBreaker** lock screen (`Enter your private passcode to unlock your journal.`).
+  - *Tip:* After 5 incorrect attempts within a minute, sign-in pauses briefly for your protection—wait a moment and try again.
+- **Welcome Walkthrough:** On a new device, a short 5-screen introduction walks through how loops work (you can step through it or tap **Skip**).
 
-### First-Time Setup (1 Minute)
-From the **Journal** tab (`LoopBreaker` header):
-1. **Values & Identity** (top-right medal icon): Add your core values and an identity statement. Once saved, LoopBreaker weaves values nudges into your AI Insight card and celebrates broken loops with your identity statement.
-2. **Streak Goal** (tap the **Streak Bar**): Pick a daily streak target that feels realistic so you build consistency without burnout.
+### One-Minute Personal Setup
+From the **Journal** tab header:
+1. **Values & Identity** (top-right medal icon): Choose your core values and write an identity statement (for example, *"I am someone who takes small actions even when a task feels uncomfortable"*). LoopBreaker uses this to offer values nudges and reinforce your identity whenever you interrupt a loop.
+2. **Streak Goal** (tap the **Streak Bar**): Pick a realistic streak target (such as 3, 7, 14, or 30 days) to build steady practice without pressure for perfection.
 
 ---
 
 ## 2. Tab 1 — `Journal` (Interrupting a Loop in the Moment)
 
-Use this screen whenever you notice tension, procrastination, overwhelm, or a craving to avoid something.
+Open **Journal** whenever you notice rising tension, avoidance, procrastination, self-criticism, or overwhelm.
 
 ### Step-by-Step Loop Interruption
-1. **Check your top Insight & Streak cards (optional):**
-   - **AI Insight** summarizes your current nervous-system state (*Sympathetic Activation* vs. *Parasympathetic Recovery*), overall trend, **Values Nudge**, **Peak Loop Window**, **Early Pre-Loop Signal**, and an **Audit Environment Friction** shortcut when relevant.
-2. **Write what is happening:**
-   - Type freely in **Describe your current state...** (even 1–2 honest sentences works) and tap **Analyze State**.
-   - You'll see **Detected: \<State> (\<Sublabel>)**, a **Low / High Risk** badge, and the **AI Observation** explaining why.
+1. **Review Your AI Insight Card:**
+   - At the top of the screen, **AI Insight** summarizes your recent trend, state-aware **Activation cue** (such as *Elevated activation*, *Possible freeze / avoidance pattern*, or *Lower activation / settling*), **Values Nudge**, **Peak Loop Window**, **Early Pre-Loop Signal**, **Resilience Score**, and an **Audit Environment Friction** shortcut when a loop repeats.
+2. **Describe What Is Happening:**
+   - Write 1–3 honest sentences in **Describe your current state...** and tap **Analyze State**.
+   - The status card shows **Detected: \<State> (\<Sublabel>)**, a **Low / Medium / High Risk** badge, and an **AI Reflection Hypothesis (Not a Diagnosis)** offering a possible interpretation for reflection.
 3. **Crisis Safety Protection:**
-   - If your entry contains acute crisis or self-harm language, LoopBreaker immediately opens the **Crisis Safety Dialog** with 24/7 crisis hotlines and emergency resources before anything else.
-4. **Physiological Check-in (HALT) — High-Risk Loops Only:**
-   - When a high-risk behavioral loop is detected, LoopBreaker asks you to check basic physical needs first: **Hydration (Water)**, **Fuel (Food)**, **Rest (Sleep)**, and **Movement (Zone 1-2)**.
-   - Tap **I've Checked These** (or **Skip**) to move on to your intervention.
-5. **Follow Your Circuit Breaker:**
-   - The **Intervention Dialog** gives you a concrete task tailored to your state and sublabel (plus guided **Mindful Self-Compassion** steps for Shame, or interactive breathing where appropriate).
-   - **Personal Loop Context & Effectiveness:** When you have prior entries, the dialog also shows where this state sits in your personal loop cycle and how well interventions have worked for you.
-   - **Why this works (neuroscience):** Expand this section for a 3-depth explanation (`Introduce` → `Reinforce` → `Deepen` as you see an intervention more often).
-6. **Tell LoopBreaker Whether It Worked:**
-   - Tap **This isn't helping** to cycle through alternative approaches in the dialog.
-   - Tap **I feel better** when the intervention helped break the loop, or **Didn't help** if it didn't.
-   - *Why this matters:* LoopBreaker ranks interventions adaptively once interventions accumulate 3+ rated outcomes (`get_intervention_effectiveness`), automatically promoting what works best for you to the primary slot on future `/analyze` calls.
+   - If your entry includes acute crisis or self-harm language, LoopBreaker immediately opens the **Crisis Safety Dialog** with 24/7 crisis hotlines and emergency contacts before anything else.
+4. **Physiological Check-in (HALT) — High-Risk Loops:**
+   - When a high-risk loop is detected, LoopBreaker first checks foundational physical needs: **Hydration (Water)**, **Fuel (Food)**, **Rest (Sleep)**, and **Movement (Zone 1-2)**.
+   - Tap **I've Checked These** (or **Skip**) to open your circuit breaker.
+5. **Try Your Circuit Breaker:**
+   - The **Intervention Dialog** suggests a concrete action tailored to your state and personal history (including guided **Mindful Self-Compassion** steps for Shame or breathing pacing where helpful).
+   - **Personal Loop Context & Effectiveness:** Once you have prior entries, the dialog shows where this state tends to appear in your cycle and your past track record with that intervention.
+   - **Why this works (neuroscience):** Tap to expand a progressive explanation that deepens the more often you practice an exercise.
+   - If the first suggestion doesn't fit the moment, tap **This isn't helping** to cycle to an alternative approach.
+6. **Record How You Responded (*Behavioral vs. Emotional Progress*):**
+   - Progress isn't only about feeling instant emotional relief—acting differently while still feeling uncomfortable is a major neuroplasticity win.
+   - Under **"Did you respond differently this time?"**, you can record:
+     - **I took action despite discomfort** *(behavioral progress)*
+     - **I interrupted the automatic pattern** *(behavioral progress)*
+     - **I feel better** *(emotional relief)*
+     - **I haven't noticed a change yet** *(neutral observation)*
+     - **Didn't help** *(unhelpful intervention)*
+   - *How LoopBreaker learns:* Once you rate an intervention at least 3 times, LoopBreaker automatically promotes the approaches that work best for you on future check-ins.
 
-### Daily Tools on the `Journal` Tab
-- **Daily Check-In (teal heart button, bottom right):** Log today's **Sleep hours**, **Hydration (1–5)**, **Food Quality (1–5)**, **Movement minutes**, and **Stress level (1–5)**. This powers missing-need insights and physiological correlations.
-- **3-Minute Daily Practice (meditation icon, top right):** A proactive 3-step daily ritual that builds your **Practice Streak**, separate from reactive loop logging.
+### Daily Preventive Tools on the `Journal` Tab
+- **Daily Check-In (teal heart button, bottom right):** Log your **Sleep hours**, **Hydration (1–5)**, **Food Quality (1–5)**, **Movement minutes**, and **Stress level (1–5)** to spot how physical foundations affect your loops.
+- **3-Minute Daily Practice (meditation icon, top right):** A short, proactive 3-step daily ritual (grounding, intention setting, and HALT awareness) that builds your **Practice Streak**.
 
 ---
 
-## 3. Tab 2 — `History` (Understanding Patterns & Effectiveness)
+## 3. Tab 2 — `History` (Understanding Patterns & Progress)
 
-The **History** tab combines analytics and your journal log under two sub-tabs, with an **Export Journey** button (share icon, top right) to copy your progress bundle as JSON.
+The **History** tab brings your dashboard and journal log together under two sub-tabs, plus an **Export Journey** button (top-right share icon) to copy a summary and backup of your progress.
 
 ### `Dashboard` Sub-Tab
-- **Summary Row:** Displays **Entries**, **Loops Broken**, and **Avg Focus**.
-- **Interruption Success Rate Card:** Shows the percentage of attempted interventions that broke a loop (`broken / attempted`), counts of **broken** vs. **didn't help**, and your single **Most effective** intervention (e.g., `Most effective: Box Breathing (2/2)`).
-- **Weekly Scorecard & Comparison:** Compares this week's activity and practice days against last week.
-- **Weekly Pattern Narrative:** AI-generated coaching reflection highlighting recurring themes and what shifted this week.
-- **Loop Path Chart:** Visualizes transitions between behavioral states over the last 30 days.
-- **Expandable Recent Entries & Reset:** Tap entries to inspect details, or scroll down to **Reset Journey Data** (requires confirmation) if you ever want a clean slate.
+- **Summary Row:** Shows total **Entries**, **Loops Broken**, and **Avg Focus**.
+- **Interruption Success Rate Card:**
+  - Shows how often attempted circuit breakers interrupted a loop (`broken / attempted`),
+  - Separates **Behavioural shifts** (*took action despite discomfort* / *interrupted the automatic pattern*) from **Emotional relief** (*felt better*),
+  - Highlights your single **Most effective** intervention so far.
+- **Weekly Scorecard & Comparison:** Compares this week's check-ins and practice days with last week.
+- **Weekly Pattern Narrative:** A weekly reflection summarizing recurring triggers and what shifted.
+- **Loop Path Chart:** Visualizes how one state transitions into another over the past 30 days.
+- **Recent Entries & Reset:** Expand recent items to review details, or scroll to the bottom for **Reset Journey Data** (requires confirmation).
 
 ### `My Journal` Sub-Tab
-- Lists your saved journal entries chronologically with risk badges and raw text.
-- Expand any entry to record or update an outcome later (**Helped**, **Neutral**, or **Didn't Help**) if you didn't rate it right away—helping feed both **Interruption Success Rate** and adaptive intervention ranking.
+- Browse your full journal entries in reverse chronological order.
+- Expand any entry to review what you wrote or record/update its outcome later (**Helped**, **Neutral**, or **Didn't Help**).
 
 ---
 
 ## 4. Tab 3 — `Exercises` (CBT Thought Records & Environment Audit)
 
-Use **Exercises** when you want structured reflection after a triggering event rather than an acute in-the-moment reset.
+Use **Exercises** when you want to step back and work on a recurring thought pattern or trigger.
 
 ### Creating a Thought Record (4-Step Wizard)
-Tap to start a new **Thought Record** and work through the 4 steps:
-1. **Step 1 — Situation:** What triggered the thought?
-2. **Step 2 — Automatic Thought:** What anxious, self-critical, or avoidant thought popped up?
-3. **Step 3 — Evidence:** List both **What supports this thought?** and **What challenges this thought?**
-4. **Step 4 — Balanced Thought:** Synthesize a grounded, realistic alternative perspective (and optionally link it to a behavioral loop node).
+1. **Step 1 — Situation:** Describe the event or context that triggered the reaction.
+2. **Step 2 — Automatic Thought:** Capture the initial anxious, self-critical, or avoidant thought.
+3. **Step 3 — Evidence:** Weigh both **What supports this thought?** and **What challenges this thought?**
+4. **Step 4 — Balanced Thought:** Write a more grounded, realistic perspective and optionally link it to a loop state.
 
 ### Environment Audit
-Tap the **Environment Audit** icon in the top bar (or the **Audit Environment Friction** chip on your AI Insight card) to select a target loop (such as `Procrastination`), check off friction-adding steps, and save a custom environment rule that makes unwanted loops harder to start.
+Tap the **Environment Audit** icon in the top bar (or the **Audit Environment Friction** chip on your AI Insight card) to choose a target loop, check off practical friction steps, and save a custom rule that makes automatic habits harder to trigger.
 
 ---
 
 ## 5. Tab 4 — `Learn` (Rewire Library)
 
-Open **Learn** (`Rewire Library`) anytime you want to understand *why* a loop feels the way it does without being in the middle of one:
-- **Rewire Your Loop — The 8-Node Cycle:** Tap the banner at the top for an interactive bottom-sheet walkthrough of how loops escalate across the 8 nodes.
-- **7 State Education Cards:** Expand **Stress**, **Anxiety**, **Procrastination**, **Shame**, **Overwhelm**, **Restlessness**, or **Numbness**, each broken into three progressive layers:
-  - *Getting Started* (what is happening in plain language)
-  - *Going Deeper* (why the loop repeats)
-  - *Advanced Neuroscience* (the underlying brain/nervous-system mechanism)
+Open **Learn** (`Rewire Library`) anytime to explore the science behind your patterns:
+- **Rewire Your Loop — The 8-Node Cycle:** Tap **Rewire Your Loop** in the top bar for a clear walkthrough of how triggers, thoughts, sensations, and urges escalate—and where you can interrupt them.
+- **Three Stages of Behavioral Change:** The seven core state cards are organized into three learning stages, each with *Getting Started*, *Going Deeper*, and *Advanced Understanding* sections:
+  - **01 — Ditch the Negative:** *Stress*, *Anxiety*, *Overwhelm*
+  - **02 — Shift Your Narrative:** *Procrastination*, *Shame*
+  - **03 — Boost the Positive:** *Restlessness*, *Numbness*
 
 ---
 
-## 6. Recommended Weekly Rhythm
+## 6. Recommended Weekly Rhythm & Troubleshooting
 
-| Cadence | What to Do | Time |
+| When | What to Do | Time |
 | :--- | :--- | :--- |
-| **Morning or Afternoon** | Tap the heart **Daily Check-In** button (or complete **3-Minute Daily Practice**). | ~1–3 min |
-| **In the Moment** | Open `Journal` → describe what's happening → **Analyze State** → try the circuit breaker → tap **I feel better** or **Didn't help**. | ~2 min |
-| **Evening (Optional)** | Review unrated items in `History` → `My Journal` and update outcomes; run a **Thought Record** in `Exercises` for sticky worries. | ~3–5 min |
-| **Once a Week** | Open `History` → `Dashboard` to check your **Interruption Success Rate**, **Loop Path Chart**, and **Weekly Pattern Narrative**, then adjust your **Environment Audit** if one trigger keeps repeating. | ~5 min |
+| **Morning / Midday** | Tap the heart **Daily Check-In** button or complete **3-Minute Daily Practice**. | ~1–3 min |
+| **When a Loop Starts** | Open `Journal` → describe what's happening → **Analyze State** → try the circuit breaker → record how you responded. | ~2 min |
+| **Evening (Optional)** | Update unrated entries in `History` → `My Journal`, or complete a **Thought Record** in `Exercises`. | ~3–5 min |
+| **Once a Week** | Review `History` → `Dashboard` (**Interruption Success Rate**, **Loop Path Chart**, **Weekly Pattern Narrative**) and refine your **Environment Audit**. | ~5 min |
+
+### Quick Troubleshooting
+- **First load after inactivity takes a few seconds:** If the server has been idle, wait a few seconds and pull down to refresh if you see a connection message.
+- **Passcode temporarily locked:** If you enter the wrong passcode 5 times within a minute, wait 60 seconds before trying again.

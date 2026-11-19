@@ -6,6 +6,7 @@ class AnalysisRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     success: bool
+    outcome_type: Optional[str] = None
     needs_check: Optional[Dict[str, bool]] = None
     halt_results: Optional[Dict[str, bool]] = None
     chosen_variant: Optional[str] = None  # Tracks which intervention variant was selected
