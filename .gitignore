@@ -59,3 +59,5 @@ models/
 *.iml
 .claude/
 .superpowers/
+.playwright-mcp/
+docs/insights-facets/
