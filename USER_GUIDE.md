@@ -146,16 +146,22 @@ The seven state cards in the library are grouped into three learning stages. Eac
 
 ## 6. Glossary — Key LoopBreaker Concepts
 
-- **The 8-Node Loop Path:** LoopBreaker maps entries across an 8-position cycle:
-  1. **Node 1 — Stress** (Initial trigger / sympathetic arousal)
-  2. **Node 2 — Coping Struggle** (Early worry or emotional overwhelm)
-  3. **Node 3 — Procrastination** (Task avoidance, perfectionism, or overwhelm freeze)
-  4. **Node 4 — Neglecting Needs** (Skipping hydration, food, sleep, or movement)
-  5. **Node 5 — Hypervigilance** (Heightened anxiety, panic, or scanning for threat)
-  6. **Node 6 — Restlessness** (Trapped activation or agitated boredom)
-  7. **Node 7 — Numbness** (Freeze / dorsal vagal shutdown or isolation)
-  8. **Node 8 — Shame** (Self-criticism that restarts the cycle back at Node 1)
-  *(Note: States such as **Anxiety**, **Overwhelm**, and **Isolation** map to specific positions above depending on their sublabel—for example, Anxiety (`Worry`) maps to Node 2 while Anxiety (`Hypervigilance`/`Panic`) maps to Node 5; Overwhelm (`Cognitive Overload`) maps to Node 3 while Overwhelm (`Shutdown`) maps to Node 7; and `Isolation` maps to Node 7.)*
+### The 8-Node Loop Path
+LoopBreaker places each entry on an 8-position cycle:
+
+| Node | Position | Typical Pattern |
+| :--- | :--- | :--- |
+| **1** | **Stress** | Initial trigger; physical activation. Also *Overload*, *Tension*, *Urgency*. |
+| **2** | **Coping struggle** | Early worry (*Anxiety: Worry, Dread*) or scattered overwhelm (*Overwhelm: Scattered, Cognitive Overload*). |
+| **3** | **Procrastination** | Task avoidance, perfectionism. |
+| **4** | **Neglecting needs** | Skipping water, food, sleep, or movement. Includes *Burnout* and *Overwhelm: Paralysis*. |
+| **5** | **Hypervigilance** | Heightened anxiety, panic, scanning for threat (*Anxiety: Hypervigilance, Panic*). |
+| **6** | **Restlessness** | Trapped activation or agitated boredom. |
+| **7** | **Numbness** | Shutdown; feeling flat or low in self-esteem. |
+| **8** | **Shame** | Self-criticism that restarts the cycle at Node 1. *Isolation* also maps here. |
+
+### Other Terms
+- **Circuit breaker:** A small action that interrupts the chain of trigger, thought, sensation, urge, and reaction.
 - **Resilience Score (`Journal` tab):** Your interruption success rate specifically on your **single most frequent (`top_loop`) state**, excluding skipped interventions (`successful interruptions / engaged interventions` for that state). Reaching **70% or higher** marks your trend as *improving*.
 - **Interruption Success Rate (`History` → `Dashboard`):** Your overall share of attempted circuit breakers across **all** states where you recorded that the loop was interrupted (`broken / attempted`).
 
@@ -166,7 +172,7 @@ The seven state cards in the library are grouped into three learning stages. Eac
 - **Where your data is stored:** LoopBreaker saves your journal entries, loop analyses, daily check-ins, thought records, daily practice sessions, profile, and environment audit on the **LoopBreaker server** (in Neo4j or SQLite), not only on your device. Your browser also stores local copies of your **Values & Identity**, **Streak Goal** target, **Daily Practice reminder time**, welcome walkthrough completion flag, and unlocked passcode so the UI loads immediately.
 - **Single-journal architecture:** Because a LoopBreaker deployment shares one database protected by a single `APP_PASSCODE`, anyone you share the link and passcode with will see and write to the same journal. Treat your deployment as a **personal single-user instance** (and use **Export Journey** for your own backups).
 - **AI processing:** When you select **Analyze State**, the text you write is sent to the configured AI service (**Google's Gemini API** on cloud deployments, or a local **Ollama** model on local setups) to classify the state and generate a reflection. Avoid including names or sensitive details you would not want processed by that service.
-- **Crisis event logging:** When the keyword-based safety check triggers, LoopBreaker logs the matched keywords, timestamp, and IP address in a crisis audit table, and records the journal entry with a crisis flag.
+- **Crisis event logging:** When the keyword-based safety check triggers, LoopBreaker logs the matched keywords and timestamp in a crisis audit table (without recording your IP address), and records the journal entry with a crisis flag.
 
 ---
 

@@ -418,14 +418,13 @@ async def analyze_behavior(body: AnalysisRequest, request: Request, db: Behavior
         is_crisis, keywords = app.state.crisis_service.detect_crisis(body.user_text)
 
         if is_crisis:
-            # Log to audit table
-            user_id = None  # TODO: Extract from auth if available
-            ip_address = request.client.host if request.client else "unknown"
+            # Log to audit table (do not log raw client IP address for privacy)
+            user_id = None
             crisis_audit_id = db.log_crisis_event(
                 user_id=user_id,
                 keywords=keywords,
                 detected_state=None,  # Not yet classified
-                ip_address=ip_address,
+                ip_address=None,
             )
 
             # Save to journal with crisis flag

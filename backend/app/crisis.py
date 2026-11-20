@@ -17,9 +17,7 @@ class CrisisSafetyService:
         "self harm",
         "self-harm",
         "cut myself",
-        "cutting",
         "overdose",
-        "od",
         "take pills",
         # Hopelessness/despair
         "hopeless",

@@ -94,3 +94,14 @@ class TestCrisisSafetyService:
         is_crisis, keywords = service.detect_crisis(12345)
         assert is_crisis is False
         assert keywords == []
+
+    def test_does_not_false_positive_on_ambiguous_words(self, service):
+        """Should not trigger on everyday uses of 'cutting' or 'od', while still catching 'cut myself' and 'overdose'."""
+        is_crisis, keywords = service.detect_crisis("I am cutting back on coffee and doing an od of work")
+        assert is_crisis is False
+        assert keywords == []
+
+        is_crisis_explicit, explicit_kw = service.detect_crisis("I want to cut myself or overdose tonight")
+        assert is_crisis_explicit is True
+        assert "cut myself" in explicit_kw
+        assert "overdose" in explicit_kw
