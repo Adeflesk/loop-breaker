@@ -226,6 +226,17 @@ async def auth_verify(payload: dict, request: Request):
     raise HTTPException(status_code=401, detail="Invalid passcode")
 
 
+_NO_CACHE_WEB_PATHS = {
+    "/",
+    "/index.html",
+    "/flutter_service_worker.js",
+    "/flutter_bootstrap.js",
+    "/main.dart.js",
+    "/version.json",
+    "/manifest.json",
+}
+
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     request_id = str(uuid.uuid4())
@@ -243,6 +254,8 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
+    if request.url.path in _NO_CACHE_WEB_PATHS:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     logger.info(
         "request.complete",
         extra={
